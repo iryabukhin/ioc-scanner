@@ -1,6 +1,10 @@
+import importlib
 import itertools
-import typing
+import os
 from typing import List, Dict, Union, Optional
+
+import loguru
+
 from  scanner.exceptions import UnsupportedOpenIocTerm
 
 from scanner.core import BaseHandler
@@ -19,40 +23,49 @@ class IOCScanner:
         self.handlers: Dict[str, BaseHandler] = {}
 
     def __init_handlers(self):
-        pass
-
+        handlers_dir = os.getenv('HANDLERS_BASE_DIR', '../handlers')
+        for dirpath, dirnames, filenames in os.walk(handlers_dir):
+            for fname in filenames:
+                if fname.endswith('.py') and not fname == '__init__.py':
+                    try:
+                        mn = fname[0:-3]
+                        module = importlib.import_module('handlers.' + mn)
+                        handler_instance, terms = module.init()
+                        for term in terms:
+                            self.handlers[term] = handler_instance
+                    except Exception as e:
+                        loguru.logger.error(f'Unable to import module {fname}')
     def process(self, indicators: List[Indicator]):
-        result = False
-        matched_indicators = []
-        for indicator in indicators:
-            valid_items = []
-            for item in indicator.items:
-                for handler in self.handlers:
-                    if handler.can_process(item) and handler.validate(item):
-                         valid_items.append(item)
+        return [i.id for i in indicators if self.validate_indicator(i)]
 
-    def validate_indicator(self, indicator: Indicator):
-        valid_children = list()
-        child_items: typing.List[IndicatorItem] = list()
-        child_indicators = list()
-        for child in indicator.items:
-            if isinstance(child, IndicatorItem):
-                child_items.append(child)
-            elif isinstance(child, Indicator):
-                child_indicators.append(child)
+    def validate_indicator(self, indicator: Indicator) -> bool:
+        valid_children = (self._validate_indicator_items(indicator)
+                          + self._validate_child_indicators(indicator))
 
-        for item_type, child_items in itertools.groupby(child_items, key=lambda i: i.context.document):
-            if self.handlers.get(item_type, None) is None:
-                raise UnsupportedOpenIocTerm('Unknown data type!')
+        return self._evaluate_logic(valid_children, indicator)
+
+    def _validate_indicator_items(self, indicator: Indicator) -> List[IndicatorItem]:
+        """Validate indicator items within an indicator."""
+        valid_items = []
+        child_items = [i for i in indicator.items if isinstance(i, IndicatorItem)]
+        for item_type, items in itertools.groupby(child_items, key=lambda i: i.context.document):
             handler = self.handlers.get(item_type)
-            result = handler.validate(child_items, indicator.operator)
-            if result:
-                valid_children.extend(child_items)
+            if not handler:
+                raise UnsupportedOpenIocTerm(f'Unknown data type: {item_type}')
+            if handler.validate(items, indicator.operator):
+                valid_items.extend(items)
+        return valid_items
 
-        for child_indicator in child_indicators:
-            if self.validate_indicator(child_indicator):
-                valid_children.append(indicator)
+    def _validate_child_indicators(self, indicator: Indicator) -> List[Indicator]:
+        """Recursively validate child indicators."""
+        return [child for child in indicator.items if isinstance(child, Indicator) and self.validate_indicator(child)]
 
-        result = True
+    def _evaluate_logic(self,
+        valid_children: List[Union[IndicatorItem, Indicator]],
+        indicator: Indicator,
+    ) -> bool:
+        """Evaluate the logical operator for an indicator."""
         if indicator.operator is IndicatorItemOperator.OR:
-
+            return bool(valid_children)
+        else:
+            return len(valid_children) == len(indicator.items)
