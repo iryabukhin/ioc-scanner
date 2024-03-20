@@ -31,7 +31,6 @@ class IndicatorItemContent:
 @dataclass
 class IndicatorItem:
     id: str
-    condition: str
     preserve_case: bool
     negate: bool
     condition: IndicatorItemCondition

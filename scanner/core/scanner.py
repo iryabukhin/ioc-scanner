@@ -3,8 +3,7 @@ import itertools
 import os
 from typing import List, Dict, Union, Optional
 
-import loguru
-
+from loguru import logger
 from  scanner.exceptions import UnsupportedOpenIocTerm
 
 from scanner.core import BaseHandler
@@ -21,6 +20,7 @@ class IOCScanner:
         self.lazy_evaluation = False
         self.scanned_iocs = {}
         self.handlers: Dict[str, BaseHandler] = {}
+        self.__init_handlers()
 
     def __init_handlers(self):
         handlers_dir = os.getenv('HANDLERS_BASE_DIR', '../handlers')
@@ -33,8 +33,10 @@ class IOCScanner:
                         handler_instance, terms = module.init()
                         for term in terms:
                             self.handlers[term] = handler_instance
+                    except ImportError as e:
+                        logger.error(f'Unable to import module {fname}: {e}')
                     except Exception as e:
-                        loguru.logger.error(f'Unable to import module {fname}')
+                        logger.error(f'Error loading handler from module {fname}: {e}')
     def process(self, indicators: List[Indicator]):
         return [i.id for i in indicators if self.validate_indicator(i)]
 
@@ -58,7 +60,10 @@ class IOCScanner:
 
     def _validate_child_indicators(self, indicator: Indicator) -> List[Indicator]:
         """Recursively validate child indicators."""
-        return [child for child in indicator.items if isinstance(child, Indicator) and self.validate_indicator(child)]
+        return [
+            child for child in indicator.items
+            if isinstance(child, Indicator) and self.validate_indicator(child)
+        ]
 
     def _evaluate_logic(self,
         valid_children: List[Union[IndicatorItem, Indicator]],

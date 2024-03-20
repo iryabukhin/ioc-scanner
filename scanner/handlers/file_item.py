@@ -4,6 +4,7 @@ import hashlib
 from typing import Union, Optional, List, Dict, ByteString
 
 from scanner.core import BaseHandler
+from scanner.core.conditions import ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator, IndicatorItemContext, IndicatorItemContent
 
 # Predefined paths to skip on Linux platforms 
@@ -49,13 +50,13 @@ class FileItemHandler(BaseHandler):
 
     def _build_file_info(self, full_path: str) -> Dict:
         return {
-            'FileItem/FileName': os.path.basename(full_path),
-            'FileItem/FilePath': os.path.abspath(full_path),
-            'FileItem/FileExtension': os.path.splitext(full_path)[1],
-            'FileItem/SizeInBytes': os.path.getsize(full_path),
-            'FileItem/Md5sum': calculate_hash(full_path, hashlib.md5),
-            'FileItem/Sha1sum': calculate_hash(full_path, hashlib.sha1),
-            'FileItem/Sha256sum': calculate_hash(full_path, hashlib.sha256),
+            'FileName': os.path.basename(full_path),
+            'FilePath': os.path.abspath(full_path),
+            'FileExtension': os.path.splitext(full_path)[1],
+            'SizeInBytes': os.path.getsize(full_path),
+            'Md5sum': calculate_hash(full_path, hashlib.md5),
+            'Sha1sum': calculate_hash(full_path, hashlib.sha1),
+            'Sha256sum': calculate_hash(full_path, hashlib.sha256),
         }
 
     def _populate_cache(self) -> None:
@@ -67,14 +68,21 @@ class FileItemHandler(BaseHandler):
         if not self.file_cache:
             self._populate_cache()
 
+        valid_items = list()
         # TODO: Implement better validation logic here
         for item in items:
-            term = item['term']
-            value = item['value']
-            for file_path, file_info in self.file_cache.items():
-                if term in file_info and file_info[term] == value:
-                    return True
-        return False
+            term = item.context.search
+            value = self.file_cache.get(term)
+            if value is not None and ConditionValidator.validate_condition(item, value):
+                valid_items.append(item)
+
+        return bool(valid_items) if operator is IndicatorItemOperator.OR else len(valid_items) == len(items)
+
+    def get_value_by_term(self, term: str) -> Optional[Union[str, int]]:
+        file_info = self.file_cache.get(term)
+        if file_info:
+            return file_info.get(term.split('/')[-1])
+        return None
 
     def _full_scan_filesystem(self, root: str) -> List[Dict]:
         # TODO: Add extensive logging to this method
