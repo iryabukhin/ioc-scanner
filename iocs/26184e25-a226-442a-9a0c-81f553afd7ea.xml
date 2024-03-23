@@ -1,0 +1,194 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="26184e25-a226-442a-9a0c-81f553afd7ea" last-modified="2012-12-01T23:39:44" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>ada</short_description>
+    <description/>
+    <keywords/>
+    <authored_by>lhy</authored_by>
+    <authored_date>2012-10-25T08:40:38</authored_date>
+    <links/>
+  </metadata>
+  <criteria>
+    <Indicator id="dff39e06-b992-4ad4-9827-16cf74b5ea39" operator="OR">
+      <Indicator id="2e271d9c-632c-4c27-9428-ae5a3377aa5f" operator="AND">
+        <IndicatorItem id="b74ce978-280c-4d31-9b78-5442b826305d" condition="contains" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/FullPath" type="mir"/>
+          <Content type="string">c:\Windows\System32</Content>
+        </IndicatorItem>
+        <IndicatorItem id="048e5e8b-a2c3-4fa6-b9f7-604302f3a85f" condition="contains" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+          <Content type="string">serives.exe</Content>
+        </IndicatorItem>
+        <IndicatorItem id="4edb0110-44be-4ce5-8b87-bf92e1e16ca3" condition="is" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/Md5sum" type="mir"/>
+          <Content type="md5">aada169a1cbd822e1402991e6a9c9238</Content>
+        </IndicatorItem>
+      </Indicator>
+      <Indicator id="f2d259ea-351c-4cb1-9b46-c879da03755a" operator="AND">
+        <IndicatorItem id="b714f6f0-8e01-453a-8816-7b7a1d1a0a27" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/KeyPath" type="mir"/>
+          <Content type="string">HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess</Content>
+        </IndicatorItem>
+        <IndicatorItem id="082069e4-f589-48e9-989b-d1c1c39f0dbd" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>
+          <Content type="string">Start</Content>
+        </IndicatorItem>
+        <IndicatorItem id="4ce571ae-f7ea-45c6-901c-396537eb4d45" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>
+          <Content type="string">2</Content>
+        </IndicatorItem>
+      </Indicator>
+      <Indicator id="f71f0662-bd9c-4f13-ac39-a0454655f565" operator="AND">
+        <IndicatorItem id="e9773c12-d05e-4097-aa44-817e5a81a6f1" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/KeyPath" type="mir"/>
+          <Content type="string">HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile</Content>
+        </IndicatorItem>
+        <IndicatorItem id="3f269fac-ce74-4629-810e-4aa7f5ac8d4f" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>
+          <Content type="string">EnableFirewall</Content>
+        </IndicatorItem>
+        <IndicatorItem id="39a1a564-0d94-40a4-a450-bc354d4a27ae" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>
+          <Content type="string">0</Content>
+        </IndicatorItem>
+      </Indicator>
+      <Indicator id="4c05075e-1345-4ba3-a349-ee78e599872b" operator="AND">
+        <IndicatorItem id="1f6b857e-6f78-4843-ae58-3f2c511aea8c" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>
+          <Content type="string">Start</Content>
+        </IndicatorItem>
+        <IndicatorItem id="f8da3d69-191e-4e15-9ed7-8f2aa9b13add" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>
+          <Content type="string">4</Content>
+        </IndicatorItem>
+        <Indicator id="3464b433-cfb0-4c61-ae98-e29b5de2a37c" operator="AND">
+          <IndicatorItem id="c2c58f87-7273-449e-97ae-54b1776c7a76" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/KeyPath" type="mir"/>
+            <Content type="string">HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wuauserv</Content>
+          </IndicatorItem>
+          <IndicatorItem id="5b872ff7-29b6-4e87-bc25-81912dc66ce0" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/KeyPath" type="mir"/>
+            <Content type="string">HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Services\wscsvc</Content>
+          </IndicatorItem>
+        </Indicator>
+      </Indicator>
+      <Indicator id="72e4fbfd-a3cc-4e29-86d5-3ebfcfe101f6" operator="AND">
+        <IndicatorItem id="f7d42cbd-7b03-4734-bc97-e400b57d5fe5" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/Path" type="mir"/>
+          <Content type="string">HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters</Content>
+        </IndicatorItem>
+        <Indicator id="39ff1ac5-2bf5-4c7e-b502-43249890ad75" operator="AND">
+          <IndicatorItem id="ebe9f693-1844-4dcc-9efe-f7319c934928" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>
+            <Content type="string">MaxFreeTcbs</Content>
+          </IndicatorItem>
+          <IndicatorItem id="d3b872d5-a2dd-4eb4-a456-04a329d7e6e6" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>
+            <Content type="string">0x7d0</Content>
+          </IndicatorItem>
+        </Indicator>
+        <Indicator id="92a30677-692d-4bd5-9040-40a4fca4d11f" operator="AND">
+          <IndicatorItem id="61672e9b-960b-456e-a642-cc934c9678c8" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>
+            <Content type="string">MaxHashTableSize</Content>
+          </IndicatorItem>
+          <IndicatorItem id="72a9e94c-af1a-4987-bced-97bced06986b" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>
+            <Content type="string">0x800</Content>
+          </IndicatorItem>
+        </Indicator>
+        <Indicator id="95fa6cf2-edb6-457c-a5b8-81c44f4b4c04" operator="AND">
+          <IndicatorItem id="5df0d18d-6c39-40fb-b634-b43a9e2f7113" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>
+            <Content type="string">TcpTimedWaitDelay</Content>
+          </IndicatorItem>
+          <IndicatorItem id="4382586f-8991-49f6-bf06-652869c698f3" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>
+            <Content type="string">0x1e</Content>
+          </IndicatorItem>
+        </Indicator>
+        <Indicator id="cfa20067-7e94-4367-8cf1-d2aa70b587d1" operator="AND">
+          <IndicatorItem id="0caf1f49-2348-444e-9db0-82e139bfa73f" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>
+            <Content type="string">MaxUserPort</Content>
+          </IndicatorItem>
+          <IndicatorItem id="b9372dcd-5ca3-4cbe-b259-8e652dd97b1e" condition="contains" preserve-case="false" negate="false">
+            <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>
+            <Content type="string">0xf618</Content>
+          </IndicatorItem>
+        </Indicator>
+      </Indicator>
+      <Indicator id="7eb009b2-aa52-4553-8f96-d6ab93a504d3" operator="AND">
+        <IndicatorItem id="35dc6746-f204-45ba-ae7e-71fd98b65f4e" condition="contains" preserve-case="false" negate="false">
+          <Context document="ServiceItem" search="ServiceItem/name" type="mir"/>
+          <Content type="string">Security Center</Content>
+        </IndicatorItem>
+        <IndicatorItem id="d0ca54fa-8120-4401-a438-d892ef62a465" condition="contains" preserve-case="false" negate="false">
+          <Context document="ServiceItem" search="ServiceItem/name" type="mir"/>
+          <Content type="string">PlugPlayCM</Content>
+        </IndicatorItem>
+      </Indicator>
+      <Indicator id="28307beb-b70d-43fd-938d-40bff22979c9" operator="AND">
+        <IndicatorItem id="691fc3fb-49b8-4778-9243-0b1695778498" condition="contains" preserve-case="false" negate="false">
+          <Context document="ProcessItem" search="ProcessItem/name" type="mir"/>
+          <Content type="string">serivces.exe</Content>
+        </IndicatorItem>
+      </Indicator>
+      <Indicator id="62c59ef1-6804-4494-a438-f5b77f69e11d" operator="OR">
+        <IndicatorItem id="4c852419-e4df-44cd-b1cb-67e5feb7bb59" condition="contains" preserve-case="false" negate="false">
+          <Context document="Network" search="Network/String" type="network"/>
+          <Content type="string">blue3</Content>
+        </IndicatorItem>
+        <IndicatorItem id="60128b77-d1fc-4064-b078-8a6a16f9a5b2" condition="is" preserve-case="false" negate="true">
+          <Context document="Network" search="Network/URI" type="network"/>
+          <Content type="string">http://checkipdyndns.org</Content>
+        </IndicatorItem>
+        <IndicatorItem id="0b7289b2-2af3-4891-99c8-00a12b6632c7" condition="is" preserve-case="false" negate="false">
+          <Context document="Network" search="Network/URI" type="network"/>
+          <Content type="string">http://www.ip138.com</Content>
+        </IndicatorItem>
+        <Indicator id="3cbbad62-26aa-48c1-b83f-5f16095020b8" operator="AND">
+          <IndicatorItem id="37f2aa9f-8d23-4ed4-b79a-e168ac3286ea" condition="contains" preserve-case="false" negate="false">
+            <Context document="PortItem" search="PortItem/remoteIP" type="mir"/>
+            <Content type="IP">60.10.179.100</Content>
+          </IndicatorItem>
+          <IndicatorItem id="a13490ca-2e46-46f5-9410-c4f1256db815" condition="contains" preserve-case="false" negate="false">
+            <Context document="PortItem" search="PortItem/remotePort" type="mir"/>
+            <Content type="string">8680 ? 8689</Content>
+          </IndicatorItem>
+        </Indicator>
+      </Indicator>
+      <Indicator id="0b5fd0cd-c37a-43f1-b8ba-07fb6795e839" operator="AND">
+        <IndicatorItem id="37655418-7064-4c95-b18d-5137e70a5308" condition="contains" preserve-case="false" negate="false">
+          <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+          <Content type="string">gregHDGHRTEfghRTHNNBMJKR!!EADSVXDFSWEdhstoio4io34o432m19</Content>
+        </IndicatorItem>
+      </Indicator>
+      <Indicator id="62cec0f3-e5f9-4bb1-b496-5cb63e136785" operator="OR">
+        <Indicator id="dba4faa1-f463-4649-ae13-9264a567c773" operator="OR">
+          <IndicatorItem id="08257809-514d-4eb3-b034-85f158102d07" condition="contains" preserve-case="false" negate="false">
+            <Context document="ProcessItem" search="ProcessItem/StringList/string" type="mir"/>
+            <Content type="string">PRIVMSG,KICK,TOPIC,001,005,332,366,376,422,433</Content>
+          </IndicatorItem>
+          <IndicatorItem id="1653ed5a-7c3d-40e5-bf75-d2e078b03564" condition="contains" preserve-case="false" negate="false">
+            <Context document="ProcessItem" search="ProcessItem/StringList/string" type="mir"/>
+            <Content type="string">l.in,log.in,l.out,lo,rmcc.die,rmcc.now,advscan,asc</Content>
+          </IndicatorItem>
+          <IndicatorItem id="1653ed5a-7c3d-40e5-bf75-d2e078b03564" condition="contains" preserve-case="false" negate="false">
+            <Context document="ProcessItem" search="ProcessItem/StringList/string" type="mir"/>
+            <Content type="string">threads,t,ipcc.wget,ipcc.download,r0flzcc.updt,r4wrcc.nb</Content>
+          </IndicatorItem>
+          <IndicatorItem id="1653ed5a-7c3d-40e5-bf75-d2e078b03564" condition="contains" preserve-case="false" negate="false">
+            <Context document="ProcessItem" search="ProcessItem/StringList/string" type="mir"/>
+            <Content type="string">trollflood,ccflood,ccgetflood,tcpsyn,visit,akicmp,patcher,opentem</Content>
+          </IndicatorItem>
+          <IndicatorItem id="1653ed5a-7c3d-40e5-bf75-d2e078b03564" condition="contains" preserve-case="false" negate="false">
+            <Context document="ProcessItem" search="ProcessItem/StringList/string" type="mir"/>
+            <Content type="string">tcp,tfn2ksyn,akudp,aksyn,sky,ddosstop,bandwidthflood,udpx,udp,ping</Content>
+          </IndicatorItem>
+        </Indicator>
+      </Indicator>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>
