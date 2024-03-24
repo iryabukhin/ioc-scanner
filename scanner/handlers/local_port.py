@@ -83,5 +83,8 @@ class LocalPortHandler(BaseHandler):
         found = len(found) > 0
         return not found if item.negate else found
 
-
-
+def init():
+    return (
+        LocalPortHandler(),
+        LocalPortHandler.get_supported_terms()
+    )
