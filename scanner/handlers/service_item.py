@@ -28,8 +28,9 @@ class ServiceItemHandler(BaseHandler):
             'ServiceItem/name',
             'ServiceItem/path',
             'ServiceItem/pid',
-            # 'ServiceItem/serviceDLL',  # Not included as we are unsure how to fetch DLL information
-            # 'ServiceItem/startedAs',  # Not included as we are unsure how to fetch this information
+            # 'ServiceItem/serviceDLL',  # unsupported as of now
+            # 'ServiceItem/serviceDLLmd5sum',
+            # 'ServiceItem/startedAs',  # unsupported as of now
             'ServiceItem/status',
             'ServiceItem/type'
         ]

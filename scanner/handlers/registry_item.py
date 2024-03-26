@@ -2,19 +2,20 @@
 from typing import List, Dict, Optional, Union, Callable
 import os
 import winreg as wg
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt
+
+from scanner.core import BaseHandler
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
+from scanner.utils import OSType
 
 from loguru import logger
 
-from scanner.core import BaseHandler
-from scanner.models import IndicatorItem, IndicatorItemOperator, IndicatorItemCondition
-from scanner.utils import OSType
 
 class RegistryItemHandler(BaseHandler):
 
     PATH_DELIMITER = r'\\'
 
-    HIVE_NAMES = {
+    HIVES = {
         'HKEY_LOCAL_MACHINE': wg.HKEY_LOCAL_MACHINE,
         'HKEY_CURRENT_CONFIG': wg.HKEY_CURRENT_CONFIG,
         'HKEY_CURRENT_USER': wg.HKEY_CURRENT_USER,
@@ -55,24 +56,28 @@ class RegistryItemHandler(BaseHandler):
 
     def _populate_key_info(self, hive: str, key_path: str) -> None:
         try:
-            key = self.HIVE_NAMES.get(hive)
+            key = self.HIVES.get(hive)
             key_handle = wg.OpenKey(key, key_path)
             registry_values = {}
+
+            full_key_path = self.PATH_DELIMITER.join([hive, key_path])
 
             try:
                 subkey_count, num_values, last_modified = wg.QueryInfoKey(key_handle)
                 for i in range(num_values):
-                    name, data, value_type = wg.EnumValue(key_handle, i)
-                    registry_values[name] = {
+                    value_name, raw_data, value_type = wg.EnumValue(key_handle, i)
+                    registry_values[value_name] = {
                         'Hive': hive,
-                        'Path': hive + self.PATH_DELIMITER + key_path,
+                        'Path': full_key_path,
                         'KeyPath': key_path,
-                        'ValueName': name,
-                        'Value': data,
+                        'ValueName': value_name,
+                        'Value': raw_data,
+                        'Text': raw_data,
                         'Type': self.TYPE_MAPPING.get(value_type),
                         'Modified': dt.fromtimestamp(last_modified),
                         'NumValues': str(num_values),
                         'NumSubKeys': subkey_count,
+                        'ReportedLengthInBytes': len(raw_data.encode())
                     }
             except OSError as e:
                 logger.error(f'Error while enumerating registry values (key path {key_path}): {str(e)}')
@@ -83,15 +88,16 @@ class RegistryItemHandler(BaseHandler):
         except FileNotFoundError as e:
             logger.error(f'Registry key not found: {e}')
 
-    def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
+    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+        # TOOO: figure out how to handle items that are not supported for the give OS
+        if not OSType.is_win():
+            return False
 
         # We need to find the KeyPath item that will be used to fetch actual registry branch values
-        key_path_item = None
-        for item in items:
-            term = item.context.search.split('/')[-1]
-            if term == 'KeyPath':
-                key_path_item = item
-                break
+        key_path_item = next(
+            (i for i in items if i.context.search.endswith('KeyPath')),
+            None
+        )
 
         if key_path_item is None:
             logger.info(
@@ -100,10 +106,10 @@ class RegistryItemHandler(BaseHandler):
             return False
 
         key_path = key_path_item.content.content
-        hive, key_path_parts = key_path.split(self.PATH_DELIMITER)[0]
-        if hive not in self.HIVE_NAMES.keys():
+        hive, *key_path_parts = key_path.split(self.PATH_DELIMITER)
+        if hive not in self.HIVES:
             logger.error(
-                f'Unknown hive name in KeyPath item: {hive}. Item GUID: {key_path_item.id}'
+                f'Unsupported hive name in KeyPath item: "{hive}". Item GUID: "{key_path_item.id}"'
             )
             return False
 
@@ -111,11 +117,18 @@ class RegistryItemHandler(BaseHandler):
         if (hive, key_path) not in self._registry_cache:
             self._populate_key_info(hive, key_path)
 
+        valid_items = list()
+        if operator is Operator.AND:
+            key_info = self._registry_cache.get((hive, key_path))
+            for item in items:
+                term = item.context.search.split('/')[-1]
+                value_to_check = key_info.
 
-    def get_value_by_term(self, term: str) -> Optional[Union[str, int]]:
-        hive, key_path, value_name = term.split('/')
-        registry_values = self._registry_cache.get((hive, key_path), {})
-        return registry_values.get(value_name, None)
+
+
+        return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
+
+
 
 def init():
     return (
