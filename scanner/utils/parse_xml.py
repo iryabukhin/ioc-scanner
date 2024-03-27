@@ -24,16 +24,14 @@ def parse(ioc_document_content: str) -> List[Indicator]:
             'Missing root <criteria> node!'
         )
 
-    result = list()
     root_node = criteria_nodes[0]
-    for child_node in root_node.getElementsByTagName('Indicator'):
-        result.append(
-            parse_indicator(child_node)
-        )
-    return result
+    return [
+        parse_indicator(n) for n in root_node.childNodes
+        if n.nodeType == xml.dom.Node.ELEMENT_NODE and n.tagName == 'Indicator'
+    ]
 
 
-def parse_indicator(indicator_node, result: list, level: int = 1):
+def parse_indicator(indicator_node, level: int = 1):
     items = []
     for child in indicator_node.childNodes:
         if child.nodeName == 'IndicatorItem':
@@ -42,7 +40,7 @@ def parse_indicator(indicator_node, result: list, level: int = 1):
             )
         elif child.nodeName == 'Indicator':
             items.append(
-                parse_indicator(child, result, level + 1)
+                parse_indicator(child, level + 1)
             )
 
     return Indicator(
