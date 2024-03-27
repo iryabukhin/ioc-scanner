@@ -1,4 +1,4 @@
-
+import hashlib
 import os
 import psutil
 from typing import List, Dict, Optional, Union
@@ -11,6 +11,10 @@ from scanner.models import (
     IndicatorItemCondition as Condition
 )
 from scanner.utils import OSType
+
+from loguru import logger
+
+from scanner.utils.hash import calculate_hash
 
 
 class ServiceItemHandler(BaseHandler):
@@ -28,16 +32,17 @@ class ServiceItemHandler(BaseHandler):
             'ServiceItem/name',
             'ServiceItem/path',
             'ServiceItem/pid',
-            # 'ServiceItem/serviceDLL',  # unsupported as of now
-            # 'ServiceItem/serviceDLLmd5sum',
-            # 'ServiceItem/startedAs',  # unsupported as of now
+            'ServiceItem/serviceDLL',  # unsupported as of now
+            'ServiceItem/serviceDLLmd5sum',
+            'ServiceItem/startedAs',
             'ServiceItem/status',
             'ServiceItem/type'
         ]
 
     def _populate_cache(self) -> None:
         for service in psutil.win_service_iter():
-            self.service_cache[service.name()] = {
+            dll_info = self._get_dll_info(service)
+            info = {
                 'name': service.name(),
                 'descriptiveName': service.display_name(),
                 'description': service.description(),
@@ -45,8 +50,13 @@ class ServiceItemHandler(BaseHandler):
                 'pid': service.pid(),
                 'arguments': self._get_service_args(service),
                 'status': service.status(),
-                'mode': service.start_type()
+                'mode': service.start_type(),
+                'startedAs': service.username(),
+                'serviceDLL': dll_info['serviceDLL'],
+                'serviceDLLmd5sum': dll_info['serviceDLLmd5sum'],
             }
+
+            self.service_cache[service.name()] = info
 
     def _get_service_args(self, service):
         if not service.pid():
@@ -77,6 +87,37 @@ class ServiceItemHandler(BaseHandler):
             if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
                 result.append(service)
         return result
+
+    def _get_dll_info(self, service) -> List:
+        result = list()
+
+        if not service.pid():
+            return result
+
+        proc = psutil.Process(pid=service.pid())
+        try:
+            # TODO: Perhaps there is a better way to do this?
+            for m in proc.memory_maps(grouped=True):
+                if m.path.endswith('.dll'):
+                    result.append({
+                       'serviceDLL': m.path,
+                       'serviceDLLmd5sum': calculate_hash(m.path, hashlib.md5)
+                    })
+        except PermissionError as e:
+            logger.error(
+                f'Permission error occurred while retrieving DLL info for process {proc.name()} (pid {str(proc.pid)}): {str(e)}'
+            )
+        except psutil.NoSuchProcess as e:
+            logger.error(
+                f'Process {proc.name()} (pid {str(proc.pid)}) does not exist: {str(e)}'
+            )
+        except Exception as e:
+            logger.error(
+                f'Uknown error occurred while retrieving DLL info for process {proc.name()} (pid {str(proc.pid)}): {str(e)}'
+            )
+        finally:
+            return result
+
 
 def init():
     return (
