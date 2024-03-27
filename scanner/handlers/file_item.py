@@ -3,9 +3,9 @@ import stat
 import hashlib
 from typing import Union, Optional, List, Dict, ByteString
 
-from scanner.core import BaseHandler
-from scanner.core.conditions import ConditionValidator
-from scanner.models import IndicatorItem, IndicatorItemOperator, IndicatorItemContext, IndicatorItemContent
+from scanner.core import BaseHandler, ConditionValidator
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
+from scanner.utils.hash import calculate_hash
 
 # Predefined paths to skip on Linux platforms 
 SKIP_PATHS_FULL = {
@@ -17,16 +17,6 @@ SKIP_PATHS_FULL = {
 }
 MOUNTED_DEVICES = {'/media', '/volumes'}
 SKIP_PATHS_END = {'/initctl'}
-
-HASH_CHUNK_SIZE = 4096
-
-
-def calculate_hash(file_path: str, hash_method):
-    hash_obj = hash_method()
-    with open(file_path, 'rb') as f:
-        for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
-            hash_obj.update(chunk)
-    return hash_obj.hexdigest()
 
 
 class FileItemHandler(BaseHandler):
@@ -64,7 +54,7 @@ class FileItemHandler(BaseHandler):
             i['FileItem/FilePath'] for i in self._full_scan_filesystem(self.default_root_path)
         }
 
-    def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
+    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
         if not self.file_cache:
             self._populate_cache()
 
@@ -76,7 +66,7 @@ class FileItemHandler(BaseHandler):
             if value is not None and ConditionValidator.validate_condition(item, value):
                 valid_items.append(item)
 
-        return bool(valid_items) if operator is IndicatorItemOperator.OR else len(valid_items) == len(items)
+        return bool(valid_items) if operator is Operator.OR else len(valid_items) == len(items)
 
     def get_value_by_term(self, term: str) -> Optional[Union[str, int]]:
         file_info = self.file_cache.get(term)

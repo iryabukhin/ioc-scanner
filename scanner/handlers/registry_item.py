@@ -2,11 +2,10 @@
 from typing import List, Dict, Optional, Union, Callable
 import os
 import winreg as wg
-from datetime import datetime as dt
 
-from scanner.core import BaseHandler
+from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
-from scanner.utils import OSType
+from scanner.utils import OSType, from_windows_timestamp
 
 from loguru import logger
 
@@ -74,13 +73,19 @@ class RegistryItemHandler(BaseHandler):
                         'Value': raw_data,
                         'Text': raw_data,
                         'Type': self.TYPE_MAPPING.get(value_type),
-                        'Modified': dt.fromtimestamp(last_modified),
-                        'NumValues': str(num_values),
+                        'Modified': from_windows_timestamp(last_modified),
+                        'NumValues': num_values,
                         'NumSubKeys': subkey_count,
-                        'ReportedLengthInBytes': len(raw_data.encode())
+                        'ReportedLengthInBytes': len(raw_data.encode()) if isinstance(raw_data, str) else (raw_data.bit_length() + 7) // 8,
                     }
             except OSError as e:
-                logger.error(f'Error while enumerating registry values (key path {key_path}): {str(e)}')
+                logger.error(
+                    f'OSError while enumerating registry values (key path "{key_path}"): {str(e)}'
+                )
+            except Exception as e:
+                logger.error(
+                    f'An unknown error occurred while processing registry values (key path "{key_path}"): {str(e)}'
+                )
             finally:
                 wg.CloseKey(key_handle)
 
@@ -118,16 +123,15 @@ class RegistryItemHandler(BaseHandler):
             self._populate_key_info(hive, key_path)
 
         valid_items = list()
-        if operator is Operator.AND:
-            key_info = self._registry_cache.get((hive, key_path))
-            for item in items:
-                term = item.context.search.split('/')[-1]
-                value_to_check = key_info.
-
-
+        key_values = self._registry_cache.get((hive, key_path))
+        for item in items:
+            term = item.context.search.split('/')[-1]
+            for value_name, value in key_values.items():
+                value_to_check = value.get(term)
+                if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
+                    valid_items.append(value)
 
         return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
-
 
 
 def init():

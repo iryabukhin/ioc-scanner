@@ -69,6 +69,8 @@ class LocalPortHandler(BaseHandler):
 
             self._port_info[conn.laddr.port]['pid'] = proc.pid
             self._port_info[conn.laddr.port]['path'] = proc.cmdline()
+            # TODO: the creation time of the socket might differ from the creation time of the process,
+            #  thus we need to figure out how to actually get the creation time of the socket
             self._port_info[conn.laddr.port]['CreationTime'] = datetime.fromtimestamp(proc.create_time())
 
     def _evaluate_condition(self, term: str, item: IndicatorItem):

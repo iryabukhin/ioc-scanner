@@ -5,10 +5,9 @@ from typing import List, Dict, Optional, Union, Callable
 
 from loguru import logger
 
-from scanner.core import BaseHandler
-from scanner.core.conditions import ConditionValidator
+from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator
-from scanner.utils import OSType
+from scanner.utils.hash import calculate_hash
 
 
 def calculate_hash(file_path: str, hash_algorithm: Callable):
@@ -95,7 +94,7 @@ class ProcessItemHandler(BaseHandler):
         try:
             for c in process.connections():
                 yield {
-                    'SocketType': '',
+                    'SocketType': '',  # TODO: find out how to determine socket type on win/linux
                     'SocketProtocol': self._get_socket_type(c.type),
                     'SocketState': c.status,
                     'SocketLocalAddress': c.laddr.ip,
