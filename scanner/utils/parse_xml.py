@@ -8,9 +8,10 @@ import xml.dom.minidom
 import scanner.exceptions
 from scanner.exceptions import XmlParseError, OpenIOCSemanticError
 from scanner.models import *
+from scanner.models import Indicator
 
 
-def parse(ioc_document_content: str) -> Dict[str, List[Union[Indicator, IndicatorItem]]]:
+def parse(ioc_document_content: str) -> List[Indicator]:
     try:
         dom = xml.dom.minidom.parseString(ioc_document_content)
     except Exception as e:
