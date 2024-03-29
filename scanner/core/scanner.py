@@ -16,10 +16,11 @@ from scanner.models import (
 )
 
 class IOCScanner:
+    lazy_evaluation = False
+    scanned_iocs = {}
+    handlers: Dict[str, BaseHandler] = {}
+
     def __init__(self):
-        self.lazy_evaluation = False
-        self.scanned_iocs = {}
-        self.handlers: Dict[str, BaseHandler] = {}
         self.__init_handlers()
 
     def __init_handlers(self):
