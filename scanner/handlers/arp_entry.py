@@ -1,5 +1,8 @@
 import ipaddress
 import json
+import re
+import subprocess
+
 from typing import List, Dict, Union, Optional
 
 from scanner.core import BaseHandler, ConditionValidator
@@ -7,8 +10,6 @@ from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
 from scanner.utils import OSType
 
 from loguru import logger
-
-import subprocess
 
 
 class ArpEntryHandler(BaseHandler):
@@ -114,7 +115,7 @@ class ArpEntryHandler(BaseHandler):
         try:
             cmd = subprocess.run(
                 ['powershell.exe', '-Command', self.POWERSHELL_ARP_CMD, '|', 'ConvertTo-Json'],
-                capture_output=True, text=True, universal_newlines=True,
+                capture_output=True, text=True, universal_newlines=True, shell=True
             )
             cmd.check_returncode()
             decoded_data = json.loads(cmd.stdout)
@@ -142,14 +143,48 @@ class ArpEntryHandler(BaseHandler):
 
             entry['CacheType'] = 'Persistent' if raw_entry['Store'] == self.STORE_PERSISTENT_VAL else 'Active'
 
-            yield entry
+            result.append(entry)
+
+        return result
 
     def _parse_win_arp_cmd_entries(self):
-        pass
+        result = list()
+
+        cmd_output = self._get_cmd_output(['arp', '-a'])
+        matches = re.findall(
+            r'(?P<addr>[-.:0-9]+)\s+(?P<hwaddr>[-0-9a-f]{17})\s+(?P<type>\w+)',
+            cmd_output
+        )
+        if not matches:
+            logger.info('No data returned from win "arp -a" command, nothing to process...')
+            return result
+
+        for match in matches:
+            entry = dict()
+            entry['PhysicalAddress'] = match[1]
+            ip_addr = match[0]
+            if ipaddress.ip_address(ip_addr).version == 4:
+                entry['IPv4Address'] = ip_addr
+            else:
+                entry['IPv6Address'] = ip_addr
+
+            entry['CacheType'] = match[2]
+
+            result.append(entry)
+
+        return result
+
 
     def _get_cmd_output(self, cmd: List[str]) -> str:
         try:
-            run_result = subprocess.run(cmd, capture_output=True, text=True, universal_newlines=True)
+            run_result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                universal_newlines=True,
+                shell=True,
+                timeout=10
+            )
             run_result.check_returncode()
             return run_result.stdout
         except subprocess.CalledProcessError as e:
@@ -163,7 +198,4 @@ class ArpEntryHandler(BaseHandler):
 
 
 def init():
-    return (
-        ArpEntryHandler(),
-        ArpEntryHandler.get_supported_terms()
-    )
+    return ArpEntryHandler()

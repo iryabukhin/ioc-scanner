@@ -5,11 +5,13 @@ import socket
 
 from datetime import datetime
 from typing import List, Dict, Optional, Union
+
+from scanner.config import ConfigObject
 from scanner.core import BaseHandler
 from scanner.models import IndicatorItem, IndicatorItemOperator
 
 class LocalPortHandler(BaseHandler):
-    def __init__(self):
+    def __init__(self, config: ConfigObject):
         self._port_info = {}
 
     @staticmethod
@@ -85,8 +87,5 @@ class LocalPortHandler(BaseHandler):
         found = len(found) > 0
         return not found if item.negate else found
 
-def init():
-    return (
-        LocalPortHandler(),
-        LocalPortHandler.get_supported_terms()
-    )
+def init(config: ConfigObject):
+    return LocalPortHandler(config)

@@ -118,7 +118,4 @@ class ProcessItemHandler(BaseHandler):
         }.get(kind, None)
 
 def init():
-    return (
-        ProcessItemHandler(),
-        ProcessItemHandler.get_supported_terms()
-    )
+    return ProcessItemHandler()

@@ -1,19 +1,37 @@
+from typing import Union, Optional, List, Dict, ByteString
 import os
 import stat
 import hashlib
-from typing import Union, Optional, List, Dict, ByteString
+import psutil
 
+from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
-from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
-from scanner.utils.hash import calculate_hash
+from scanner.models import (
+    IndicatorItem,
+    IndicatorItemOperator as Operator,
+    IndicatorItemCondition as Condition
+)
+from scanner.utils import OSType
 
 from loguru import logger
+
+if OSType.is_win():
+    try:
+        import win32file
+        import win32api
+    except Exception as e:
+        logger.error(f'Could not import win32api or win32file: {str(e)}')
+
 
 
 HASH_CHUNK_SIZE = 4096
 
 
 class FileItemHandler(BaseHandler):
+
+    WIN_SYS_DRIVE = 'C:\\'
+    LINUX_DEFAULT_ROOT_PATH = '/'
+
     # Predefined paths to skip on Linux platforms
     SKIP_PATHS_FULL = {
         '/proc', '/dev',
@@ -25,13 +43,15 @@ class FileItemHandler(BaseHandler):
     MOUNTED_DEVICES = {'/media', '/volumes'}
     SKIP_PATHS_END = {'/initctl'}
 
-    MAX_FILE_SIZE = 1024 * 1024 * 1024
 
-    def __init__(self):
+    MAX_FILE_SIZE_MB = 32
+
+    def __init__(self, config: ConfigObject):
+        self.config = config
         self.file_cache = {}
-        self.default_root_path = '/'
-        self.scan_all_drives = False
 
+        self._scan_all_drives = config.file_item.scan_all_drives or False
+        self._max_file_size = config.file_item.max_file_size_mb or self.MAX_FILE_SIZE_MB
 
     @staticmethod
     def get_supported_terms() -> List[str]:
@@ -62,13 +82,17 @@ class FileItemHandler(BaseHandler):
         result.update({f'{h.name.title()}sum': hash_obj.hexdigest() for h in hash_methods})
         return result
 
-    def _populate_cache(self) -> None:
-        self.file_cache = {
-            i['FileItem/FilePath'] for i in self._full_scan_filesystem(self.default_root_path)
-        }
-
     def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
-        if not self.file_cache:
+        fullpath_item = next(
+            (i for i in items if i.context.search == 'FileItem/FullPath'),
+            None
+        )
+        # if FullPath item is present and operator is AND, we can scan only the file specified in the FullPath item
+        if fullpath_item is not None and operator is Operator.AND:
+            path = fullpath_item.content.content
+            if path not in self.file_cache:
+                self._populate_cache(path)
+        elif not self.file_cache:
             self._populate_cache()
 
         valid_items = list()
@@ -81,15 +105,33 @@ class FileItemHandler(BaseHandler):
 
         return bool(valid_items) if operator is Operator.OR else len(valid_items) == len(items)
 
-    def get_value_by_term(self, term: str) -> Optional[Union[str, int]]:
-        file_info = self.file_cache.get(term)
-        if file_info:
-            return file_info.get(term.split('/')[-1])
-        return None
+    def _populate_cache(self, root: Optional[str] = None) -> None:
+        if root is None:
+            if OSType.is_win():
+                if self._scan_all_drives:
+                    for drive_base_path in self._get_all_drives():
+                        self._populate_cache(drive_base_path)
+                else:
+                    root = self.WIN_SYS_DRIVE
+            elif OSType.is_linux():
+                root = self.LINUX_DEFAULT_ROOT_PATH
 
-    def _full_scan_filesystem(self, root: str) -> List[Dict]:
-        # TODO: Add extensive logging to this method
-        logger.info(f'Begin scanning root path "{root}"')
+        self.file_cache = {
+            i['FileItem/FilePath'] for i in self._recursive_scan(root)
+        }
+
+    def _recursive_scan(self, root: Optional[str] = None) -> List[Dict]:
+        if root is None:
+            if OSType.is_win():
+                if self._scan_all_drives:
+                    for drive_base_path in self._get_all_drives():
+                        self._recursive_scan(drive_base_path)
+                else:
+                    root = self.WIN_SYS_DRIVE
+            elif OSType.is_linux():
+                root = self.LINUX_DEFAULT_ROOT_PATH
+
+        logger.info(f'Begin scanning root path "{root}" ...')
         if not os.path.exists(root):
             logger.info(f'Path {root} does not exist, aborting scan...')
             return []
@@ -117,8 +159,8 @@ class FileItemHandler(BaseHandler):
             for filename in files:
                 fpath = os.path.join(root, filename)
 
-                stat = os.stat(fpath)
-                fmode = stat.st_mode
+                fstat = os.stat(fpath)
+                fmode = fstat.st_mode
                 if (stat.S_ISCHR(fmode)
                         or stat.S_ISBLK(fmode)
                         or stat.S_ISFIFO(fmode)
@@ -127,15 +169,15 @@ class FileItemHandler(BaseHandler):
                 ):
                     continue
 
-                if stat.st_size > self.MAX_FILE_SIZE:
-                    logger.info(f'Skipping file "{fpath}" because its size exceeds {self.MAX_FILE_SIZE} bytes')
+                if fstat.st_size > self._max_file_size * 1024 * 1024:
+                    logger.info(f'Skipping file "{fpath}" because its size exceeds {self._max_file_size} MB')
                     continue
 
                 yield self._build_file_info(fpath)
 
+    def _get_all_drives(self) -> List[str]:
+        return [p.mountpoint for p in psutil.disk_partitions() if p.fstype == 'NTFS']
 
-def init():
-    return (
-        FileItemHandler(),
-        FileItemHandler.get_supported_terms()
-    )
+
+def init(config: ConfigObject):
+    return FileItemHandler(config)

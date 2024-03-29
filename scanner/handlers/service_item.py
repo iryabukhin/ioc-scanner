@@ -3,6 +3,7 @@ import os
 import psutil
 from typing import List, Dict, Optional, Union
 
+from scanner.config import ConfigObject
 from scanner.core import BaseHandler
 from scanner.core.conditions import ConditionValidator
 from scanner.models import (
@@ -18,8 +19,9 @@ from scanner.utils.hash import calculate_hash
 
 
 class ServiceItemHandler(BaseHandler):
-    def __init__(self):
+    def __init__(self, config: ConfigObject):
         super().__init__()
+        self.config = config
         self.service_cache = {}
 
     @staticmethod
@@ -113,14 +115,11 @@ class ServiceItemHandler(BaseHandler):
             )
         except Exception as e:
             logger.error(
-                f'Uknown error occurred while retrieving DLL info for process {proc.name()} (pid {str(proc.pid)}): {str(e)}'
+                f'Unknown error occurred while retrieving DLL info for process {proc.name()} (pid {str(proc.pid)}): {str(e)}'
             )
         finally:
             return result
 
 
-def init():
-    return (
-        ServiceItemHandler(),
-        ServiceItemHandler.get_supported_terms()
-    )
+def init(config: ConfigObject):
+    return ServiceItemHandler(config)

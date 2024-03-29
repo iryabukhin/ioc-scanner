@@ -3,6 +3,7 @@ from typing import List, Dict, Optional, Union, Callable
 import os
 import winreg as wg
 
+from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
 from scanner.utils import OSType, from_windows_timestamp
@@ -32,7 +33,8 @@ class RegistryItemHandler(BaseHandler):
         wg.REG_RESOURCE_LIST: 'RESOURCE'
     }
 
-    def __init__(self):
+    def __init__(self,  config: ConfigObject):
+        self.config = config
         self._registry_cache = {}
 
     @staticmethod
@@ -134,8 +136,5 @@ class RegistryItemHandler(BaseHandler):
         return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
 
 
-def init():
-    return (
-        RegistryItemHandler(),
-        RegistryItemHandler.get_supported_terms()
-    )
+def init(config: ConfigObject):
+    return RegistryItemHandler(config)

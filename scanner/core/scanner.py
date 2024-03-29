@@ -4,6 +4,8 @@ import os
 from typing import List, Dict, Union, Optional
 
 from loguru import logger
+
+from scanner.config import ConfigObject
 from scanner.exceptions import UnsupportedOpenIocTerm
 
 from scanner.core import BaseHandler
@@ -20,7 +22,8 @@ class IOCScanner:
     scanned_iocs = {}
     handlers: Dict[str, BaseHandler] = {}
 
-    def __init__(self):
+    def __init__(self, config: ConfigObject):
+        self.config = config
         self.__init_handlers()
 
     def __init_handlers(self):
@@ -33,9 +36,14 @@ class IOCScanner:
                 try:
                     mn = fname[0:-3]
                     module = importlib.import_module(f'scanner.handlers.{mn}')
-                    handler_instance, terms = module.init()
-                    for term in terms:
-                        self.handlers[term] = handler_instance
+                    if not hasattr(module, 'init') or not callable(module.init):
+                        logger.error(f'Handler {mn} does not implement init() method, skipping initialization...')
+                        continue
+                    handler = module.init(config=self.config)
+                    if not isinstance(handler, BaseHandler):
+                        logger.error(f'Handler {mn} does not implement BaseHandler interface, skipping initialization...')
+                        continue
+                    self.handlers.update({t: handler for t in handler.get_supported_terms()})
                 except ImportError as e:
                     logger.error(f'Unable to import module {fname}: {e}')
                 except Exception as e:
