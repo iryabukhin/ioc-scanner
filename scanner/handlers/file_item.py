@@ -4,6 +4,8 @@ import stat
 import hashlib
 import psutil
 
+from datetime import datetime, timezone
+
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import (
@@ -63,7 +65,9 @@ class FileItemHandler(BaseHandler):
             'FileItem/FilePath',
             'FileItem/FullPath'
             'FileItem/FileExtension',
-            'FileItem/SizeInBytes'
+            'FileItem/SizeInBytes',
+            'FileItem/Created',
+            'FileItem/Modified',
         ]
 
     def _build_file_info(self, full_path: str) -> Dict:
@@ -72,6 +76,8 @@ class FileItemHandler(BaseHandler):
             'FilePath': os.path.abspath(full_path),
             'FileExtension': os.path.splitext(full_path)[1],
             'SizeInBytes': os.path.getsize(full_path),
+            'Created': self._get_creation_time(full_path),
+            'Modified': datetime.fromtimestamp(os.path.getmtime(full_path), timezone.utc),
         }
 
         hash_methods = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
@@ -173,10 +179,25 @@ class FileItemHandler(BaseHandler):
                     logger.info(f'Skipping file "{fpath}" because its size exceeds {self._max_file_size} MB')
                     continue
 
-                yield self._build_file_info(fpath)
+                try:
+                    yield self._build_file_info(fpath)
+                except PermissionError as e:
+                    logger.warning(f'Could not scan file "{fpath}" due to permission error: {str(e)}')
+                except Exception as e:
+                    logger.warning(f'Could not scan file "{fpath}" due to unknown error: {str(e)}')
 
     def _get_all_drives(self) -> List[str]:
         return [p.mountpoint for p in psutil.disk_partitions() if p.fstype == 'NTFS']
+
+    def _get_creation_time(self, full_path) -> Optional[datetime]:
+        if OSType.is_win():
+            timestamp = os.path.getctime(full_path)
+        else:
+            try:
+                timestamp = stat.st_birthtime
+            except AttributeError:
+                timestamp = stat.st_mtime
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
 def init(config: ConfigObject):
