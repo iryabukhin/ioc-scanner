@@ -1,5 +1,5 @@
 import re
-from typing import Union
+from typing import Union, List, Dict, Optional
 from datetime import datetime as dt
 
 from scanner.models import IndicatorItem, IndicatorItemCondition as Condition
@@ -10,7 +10,7 @@ class ConditionValidator:
     @staticmethod
     def validate_condition(
         item: IndicatorItem,
-        value_to_check: Union[str, int, float, dt]
+        value_to_check: Union[str, int, float, dt, List]
     ):
         condition = item.condition
         content_type = item.content.type

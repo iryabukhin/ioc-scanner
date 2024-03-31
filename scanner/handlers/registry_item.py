@@ -1,5 +1,5 @@
 
-from typing import List, Dict, Optional, Union, Callable
+from typing import List, Dict, Optional, Union, Callable, AnyStr, ByteString
 import os
 import winreg as wg
 
@@ -15,6 +15,14 @@ class RegistryItemHandler(BaseHandler):
 
     PATH_DELIMITER = r'\\'
 
+    HIVE_ABBREVIATIONS = {
+        'HKLM': 'HKEY_LOCAL_MACHINE',
+        'HKCU': 'HKEY_CURRENT_USER',
+        'HKCR': 'HKEY_CLASSES_ROOT',
+        'HKCC': 'HKEY_CURRENT_CONFIG',
+        'HKU': 'HKEY_USERS'
+    }
+
     HIVES = {
         'HKEY_LOCAL_MACHINE': wg.HKEY_LOCAL_MACHINE,
         'HKEY_CURRENT_CONFIG': wg.HKEY_CURRENT_CONFIG,
@@ -23,14 +31,18 @@ class RegistryItemHandler(BaseHandler):
     }
 
     TYPE_MAPPING = {
-        wg.REG_BINARY: 'BINARY',
-        wg.REG_DWORD: 'DWORD',
-        wg.REG_QWORD: 'QWORD',
-        wg.REG_LINK: 'LINK',
-        wg.REG_SZ: 'TEXT',
-        wg.REG_MULTI_SZ: 'TEXT',
-        wg.REG_NONE: 'ENCODED',
-        wg.REG_RESOURCE_LIST: 'RESOURCE'
+        wg.REG_NONE: 'REG_NONE',
+        wg.REG_BINARY: 'REG_BINARY',
+        wg.REG_DWORD: 'REG_DWORD',
+        wg.REG_QWORD: 'REG_QWORD',
+        wg.REG_LINK: 'REG_LINK',
+        wg.REG_SZ: 'REG_SZ',
+        wg.REG_MULTI_SZ: 'REG_MULTI_SZ',
+        wg.REG_RESOURCE_LIST: 'REG_RESOURCE_LIST',
+        wg.REG_DWORD_BIG_ENDIAN: 'REG_DWORD_BIG_ENDIAN',
+        wg.REG_EXPAND_SZ: 'REG_EXPAND_SZ',
+        wg.REG_RESOURCE_REQUIREMENTS_LIST: 'REG_RESOURCE_REQUIREMENTS_LIST',
+        wg.REG_FULL_RESOURCE_DESCRIPTOR: 'REG_FULL_RESOURCE_DESCRIPTOR',
     }
 
     def __init__(self,  config: ConfigObject):
@@ -72,13 +84,13 @@ class RegistryItemHandler(BaseHandler):
                         'Path': full_key_path,
                         'KeyPath': key_path,
                         'ValueName': value_name,
-                        'Value': raw_data,
+                        'Value': self._get_registry_value(raw_data, value_type),
                         'Text': raw_data,
                         'Type': self.TYPE_MAPPING.get(value_type),
                         'Modified': from_windows_timestamp(last_modified),
                         'NumValues': num_values,
                         'NumSubKeys': subkey_count,
-                        'ReportedLengthInBytes': len(raw_data.encode()) if isinstance(raw_data, str) else (raw_data.bit_length() + 7) // 8,
+                        'ReportedLengthInBytes': self._get_value_length(raw_data, value_type),
                     }
             except OSError as e:
                 logger.error(
@@ -102,7 +114,7 @@ class RegistryItemHandler(BaseHandler):
 
         # We need to find the KeyPath item that will be used to fetch actual registry branch values
         key_path_item = next(
-            (i for i in items if i.context.search.endswith('KeyPath')),
+            (i for i in items if i.get_term().endswith('KeyPath')),
             None
         )
 
@@ -114,6 +126,10 @@ class RegistryItemHandler(BaseHandler):
 
         key_path = key_path_item.content.content
         hive, *key_path_parts = key_path.split(self.PATH_DELIMITER)
+
+        if hive in self.HIVE_ABBREVIATIONS:
+            hive = self.HIVE_ABBREVIATIONS[hive]
+
         if hive not in self.HIVES:
             logger.error(
                 f'Unsupported hive name in KeyPath item: "{hive}". Item GUID: "{key_path_item.id}"'
@@ -134,6 +150,22 @@ class RegistryItemHandler(BaseHandler):
                     valid_items.append(value)
 
         return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
+
+    def _get_registry_value(self, raw_data: Union[str, bytes, int], value_type: int):
+        if isinstance(raw_data, bytes) and value_type == wg.REG_BINARY:
+            return '0x' + raw_data.hex()
+        elif isinstance(raw_data, str):
+            return raw_data
+        else:
+            return str(raw_data)
+
+    def _get_value_length(self, raw_data: Union[str, bytes, int], value_type: int):
+        if isinstance(raw_data, bytes):
+            return len(raw_data)
+        elif isinstance(raw_data, str):
+            return len(raw_data.encode('utf-16le'))
+        else:
+            return (raw_data.bit_length() + 7) // 8
 
 
 def init(config: ConfigObject):
