@@ -7,7 +7,7 @@ from typing import List, Dict, Union, Optional
 
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
-from scanner.utils import OSType
+from scanner.utils import OSType, get_cmd_output
 
 from loguru import logger
 
@@ -67,11 +67,10 @@ class ArpEntryHandler(BaseHandler):
 
     def _is_powershell_available(self) -> bool:
         try:
-            p = subprocess.run(
-                ['powershell.exe', '-Command', 'Get-Command', self.POWERSHELL_ARP_CMD],
-                capture_output=True, text=True, universal_newlines=True
+            get_cmd_output(
+                f'powershell.exe -Command Get-Command {self.POWERSHELL_ARP_CMD}',
+                raise_exceptions=True
             )
-            p.check_returncode()
             return True
         except subprocess.CalledProcessError:
             return False
