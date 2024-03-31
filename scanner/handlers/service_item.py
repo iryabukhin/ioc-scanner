@@ -43,7 +43,6 @@ class ServiceItemHandler(BaseHandler):
 
     def _populate_cache(self) -> None:
         for service in psutil.win_service_iter():
-            dll_info = self._get_dll_info(service)
             info = {
                 'name': service.name(),
                 'descriptiveName': service.display_name(),
@@ -54,10 +53,12 @@ class ServiceItemHandler(BaseHandler):
                 'status': service.status(),
                 'mode': service.start_type(),
                 'startedAs': service.username(),
-                'serviceDLL': dll_info['serviceDLL'],
-                'serviceDLLmd5sum': dll_info['serviceDLLmd5sum'],
+                'serviceDLL': list(),
+                'serviceDLLmd5sum': list(),
             }
-
+            for dll_info in self._get_dll_info(service):
+                info['serviceDLL'].append(dll_info['serviceDLL'])
+                info['serviceDLLmd5sum'].append(dll_info['serviceDLLmd5sum'])
             self.service_cache[service.name()] = info
 
     def _get_service_args(self, service):
