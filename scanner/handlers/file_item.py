@@ -68,6 +68,7 @@ class FileItemHandler(BaseHandler):
             'FileItem/SizeInBytes',
             'FileItem/Created',
             'FileItem/Modified',
+            'FileItem/Accessed',
         ]
 
     def _build_file_info(self, full_path: str) -> Dict:
@@ -78,6 +79,7 @@ class FileItemHandler(BaseHandler):
             'SizeInBytes': os.path.getsize(full_path),
             'Created': self._get_creation_time(full_path),
             'Modified': datetime.fromtimestamp(os.path.getmtime(full_path), timezone.utc),
+            'Accessed': datetime.fromtimestamp(os.path.getatime(full_path), timezone.utc),
         }
 
         hash_methods = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
