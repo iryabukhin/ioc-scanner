@@ -11,3 +11,6 @@ class UnsupportedDataType(Exception):
 
 class UnsupportedOpenIocTerm(Exception):
     """Provided term is not supported as of now"""
+
+class HandlerRegisterError(Exception):
+    """An error occurred while registering a new handler"""
