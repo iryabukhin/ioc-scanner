@@ -10,16 +10,6 @@ from scanner.models import IndicatorItem, IndicatorItemOperator
 from scanner.utils.hash import calculate_hash
 
 
-def calculate_hash(file_path: str, hash_algorithm: Callable):
-    try:
-        with open(file_path, 'rb') as f:
-            data = f.read()
-            return hash_algorithm(data).hexdigest()
-    except Exception as e:
-        logger.error(f'Error occurred while calculating hash for file {file_path}: {e}')
-        return None
-
-
 class ProcessItemHandler(BaseHandler):
 
     @staticmethod
