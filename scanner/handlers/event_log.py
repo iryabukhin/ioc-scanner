@@ -1,21 +1,17 @@
-
-import os
+import json
 from typing import List, Dict, Union, AnyStr, Optional
-from lxml import objectify
-from datetime import datetime as dt, timezone as tz
 
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import (
     IndicatorItem,
     IndicatorItemOperator as Operator,
-    IndicatorItemCondition as Condition, IndicatorItemOperator
+    IndicatorItemCondition as Condition
 )
 from scanner.utils import OSType
+from scanner.exceptions import UnsupportedOpenIocTerm
 from scanner.config import ConfigObject
 
 from loguru import logger
-
-import xml.etree.ElementTree as ET
 
 if OSType.is_win():
     import win32evtlog, win32evtlogutil, win32con
@@ -29,9 +25,13 @@ class EventLogItemHandler(BaseHandler):
     CHANNEL_APPLICATION = 'Application'
     CHANNEL_SECURITY = 'Security'
 
-    evt_dict = {
+    DEFAULT_CHANNEL = CHANNEL_APPLICATION
+
+    BUF_SIZE = 1024
+
+    EVENT_TYPE_NAMES = {
         win32con.EVENTLOG_AUDIT_FAILURE: 'FailureAudit',
-        win32con.EVENTLOG_AUDIT_SUCCESS: 'SucessAudit',
+        win32con.EVENTLOG_AUDIT_SUCCESS: 'SuccessAudit',
         win32con.EVENTLOG_INFORMATION_TYPE: 'Information',
         win32con.EVENTLOG_WARNING_TYPE: 'Warning',
         win32con.EVENTLOG_ERROR_TYPE: 'Error'
@@ -47,57 +47,85 @@ class EventLogItemHandler(BaseHandler):
             'EventLogItem/EID',
             'EventLogItem/log',
             'EventLogItem/message',
-            'EventLogItem/source',
+            # 'EventLogItem/source',
             'EventLogItem/index',
             'EventLogItem/type',
-            'EventLogItem/category',
+            # Fetching category name is not supported in pywin32, can only get category number
+            # 'EventLogItem/category',
             'EventLogItem/categoryNum',
-            'EventLogItem/reserved',
+            # 'EventLogItem/reserved',
             'EventLogItem/machine'
-            'EventLogItem/CorrelationActivityId',
-            'EventLogItem/CorrelationRelatedActivityId',
-            'EventLogItem/blob',
+            # 'EventLogItem/CorrelationActivityId',
+            # 'EventLogItem/CorrelationRelatedActivityId',
+            # 'EventLogItem/blob',
         ]
 
-    def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
-        fetched_events = self._fetch_events(self.CHANNEL_SYSTEM)
-        filter_function = all if IndicatorItemOperator is IndicatorItemOperator.AND else any
-        return filter_function(self._validate_item(event, items) for event in fetched_events)
+    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+        for channel in [self.CHANNEL_APPLICATION, self.CHANNEL_SYSTEM, self.CHANNEL_SECURITY]:
+            events = self._fetch_events(channel)
+            filter_function = any if operator is Operator.OR else all
+            for event in events:
+                try:
+                    if filter_function([self._validate_single_item(event, i, channel) for i in items]):
+                        return True
+                except Exception as e:
+                    logger.error('\n'.join([
+                        f'An error occurred during validation of item: {str(e)}.',
+                        f'Event data: ' + json.dumps({
+                            **{k: getattr(event, k) for k in dir(event) if not k.startswith('_') and not isinstance(getattr(event, k), bytes)},
+                            **{k: getattr(event, k).Format() for k in dir(event) if k.startswith('Time')}
+                        })
+                    ]))
+                    return False
+        return False
 
+    def _fetch_events(self, source_name: Optional[str] = None) -> List:
+        ret = list()
 
-    def _fetch_events(self, chanel: str, start_time: dt, end_time: dt):
-        handle = win32evtlog.OpenEventLog(None, chanel)
-        flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
-        events = win32evtlog.ReadEventLog(handle, flags, 0)
-        win32evtlog.CloseEventLog(handle)
-        return events
+        if not source_name:
+            source_name = self.DEFAULT_CHANNEL
 
+        logger.debug(f"Fetching events from source: {source_name}")
+        handle = None
+        try:
+            handle = win32evtlog.OpenEventLog(None, source_name)
+            flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
+            offset = 0
+            eventlog_records = win32evtlog.ReadEventLog(handle, flags, offset, self.BUF_SIZE)
+            while eventlog_records:
+                ret.extend(eventlog_records)
+                offset += len(eventlog_records)
+                eventlog_records = win32evtlog.ReadEventLog(handle, flags, offset, self.BUF_SIZE)
+        except Exception as e:
+            logger.error(f"Failed to fetch events from '{source_name}' due to an error: {str(e)}")
+        finally:
+            if handle is not None:
+                win32evtlog.CloseEventLog(handle)
+        return ret
 
-    def _validate_item(self, event, items):
-        for item in items:
-            if not self._validate_single_item(event, item):
-                return False
-        return True
-
-    def _validate_single_item(self, event, item: IndicatorItem, chanel: str) -> bool:
-        # Extract relevant data from the fetched events
-        # Compare the extracted data with the conditions specified in the IndicatorItem
+    def _validate_single_item(self, event, item: IndicatorItem, source: str) -> bool:
         if item.get_term() == 'EID':
             value = int(event.EventID)
         elif item.get_term() == 'message':
-            value = win32evtlogutil.SafeFormatMessage(event, chanel)
+            value = win32evtlogutil.SafeFormatMessage(event, source)
         elif item.get_term() == 'source':
-            # Example: Check if Source matches the specified value
             value = event.SourceName
         elif item.get_term() == 'machine':
             value = event.ComputerName
         elif item.get_term() == 'type':
-            value = self.evt_dict[event.EventType]
+            value = self.EVENT_TYPE_NAMES.get(event.EventType)
+        elif item.get_term() == 'index':
+            value = event.RecordNumber
         elif item.get_term() == 'categoryNum':
-            value  = event.EventCategory
+            value = event.EventCategory
+        elif item.get_term() == 'log':
+            value = source
+        else:
+            raise UnsupportedOpenIocTerm(f'Unsupported IOC term: {item.get_term()}')
 
-        return ConditionValidator.validate_condition(item, value)
-
+        result = ConditionValidator.validate_condition(item, value)
+        logger.debug(f"Validation result for item '{item.id}' is '{result}'")
+        return result
 
 
 def init(config: ConfigObject):
