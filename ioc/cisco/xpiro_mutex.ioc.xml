@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="05a259e4-0438-4594-b491-350f15dfff6a" last-modified="2014-10-09T20:07:40" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>Malware-XPIRO-Mutex</short_description>
+    <description>Malware-XPIRO-Mutex</description>
+    <keywords/>
+    <authored_by>ThreatGRID</authored_by>
+    <authored_date>2014-10-09T20:02:13</authored_date>
+    <links/>
+  </metadata>
+  <criteria>
+    <Indicator id="c643397e-728e-4147-ba5a-9b3be2481931" operator="OR">
+      <IndicatorItem id="a2e2d858-e5b2-49de-b5b8-5cbd40e7f23f" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">gazavat-svc</Content>
+      </IndicatorItem>
+      <IndicatorItem id="b02337b7-d0dc-471e-afc6-c6be8e03b101" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">kkq-vx_mtx</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

@@ -1,0 +1,124 @@
+<ioc xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+     xmlns="http://schemas.mandiant.com/2010/ioc" id="0294496a-b037-55b9-a3fe-46a344d7f524"
+     last-modified="2016-11-08T16:43:21">
+    <short_description>ioc for 495DB359D61411F0688211C8DD473CB7</short_description>
+    <description>ZONE:Yellow</description>
+    <authored_by>KasperskyThreatLookup</authored_by>
+    <authored_date>2016-11-08T16:43:21</authored_date>
+    <links/>
+    <definition>
+        <Indicator operator="OR" id="6f7a75ee-f423-5cf1-ad42-140ae6aa2301">
+            <IndicatorItem condition="is" id="59b35d49-14d6-f011-6882-11c8dd473cb7">
+                <Context document="FileItem" search="FileItem/Md5sum" type="mir"/>
+                <Content type="md5">495DB359D61411F0688211C8DD473CB7</Content>
+            </IndicatorItem>
+            <IndicatorItem condition="is" id="4784b55d-d0a9-5172-8c0a-f740f9184607">
+                <Context document="FileItem" search="FileItem/Sha1sum" type="mir"/>
+                <Content type="string">CAD7296F99733E209CE57422F348A8698245CBD5</Content>
+            </IndicatorItem>
+            <IndicatorItem condition="is" id="b533c6cd-89ab-5c8c-971c-0cd79858aeb7">
+                <Context document="FileItem" search="FileItem/Sha256sum" type="mir"/>
+                <Content type="string">12FF1AE06AC3ACA95969B2D338A24D47DF80D7B70521BD7DB801B715DB629420</Content>
+            </IndicatorItem>
+            <Indicator operator="AND" id="173db112-d8ee-5141-b76a-49dc3430f04c">
+                <IndicatorItem condition="is" id="4b2610ba-5431-57f2-8af3-24d0f43d7919">
+                    <Context document="FileItem" search="FileItem/PEInfo/DigitalSignature/SignatureExists" type="mir"/>
+                    <Content type="string">YES</Content>
+                </IndicatorItem>
+                <IndicatorItem condition="is" id="1f3510a5-0f48-522f-bd50-adbf9be9c9c8">
+                    <Context document="FileItem" search="FileItem/SizeInBytes" type="mir"/>
+                    <Content type="int">3702320</Content>
+                </IndicatorItem>
+                <IndicatorItem condition="is" id="3e9d0121-11fb-5e7a-bf0c-9a99728178ca">
+                    <Context document="FileItem" search="FileItem/FileExtension" type="mir"/>
+                    <Content type="string">PE</Content>
+                </IndicatorItem>
+                <Indicator operator="AND" id="472a6ade-1196-5e1e-a8b4-8f0864b40051">
+                    <Indicator operator="OR" id="a317c11b-0c26-5e52-b601-307d133ee986">
+                        <IndicatorItem condition="is" id="a4c97305-950f-555f-b0ca-ecbea8873e38">
+                            <Context document="FileItem" search="FileItem/FilePath" type="mir"/>
+                            <Content type="string">itva\lovivkontakte2</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="6cc33a2a-72b1-558b-b737-bcc52ede225b">
+                            <Context document="FileItem" search="FileItem/FilePath" type="mir"/>
+                            <Content type="string">lovivk</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="a0f344e5-5b06-51ec-bb14-02b60918f31a">
+                            <Context document="FileItem" search="FileItem/FilePath" type="mir"/>
+                            <Content type="string">system volume
+                                information\_restore{8d816860-50be-4aed-b133-e43e1df90217}\rp115
+                            </Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="759b363e-5f39-51f0-bacf-5c168eb1f5b3">
+                            <Context document="FileItem" search="FileItem/FilePath" type="mir"/>
+                            <Content type="string">system volume
+                                information\_restore{8d816860-50be-4aed-b133-e43e1df90217}\rp113
+                            </Content>
+                        </IndicatorItem>
+                    </Indicator>
+                    <Indicator operator="OR" id="8a207637-a1e8-5059-8e74-cdc0fb0a41eb">
+                        <IndicatorItem condition="is" id="d744a9e8-9f30-59a0-aca1-e0f00ffe4b5b">
+                            <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+                            <Content type="string">lvk2.exe</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="af970d9e-b5f9-5ae2-81d3-5ebef78b63cf">
+                            <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+                            <Content type="string">a0040146.exe</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="1cf19365-1b8e-5dbe-99d6-ed94783855a7">
+                            <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+                            <Content type="string">a0004589.exe</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="2cc36f03-8207-55e2-9ed6-4b927a043c4b">
+                            <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+                            <Content type="string">updater.exe</Content>
+                        </IndicatorItem>
+                    </Indicator>
+                    <Indicator operator="OR" id="a20c7f94-60ce-5dd6-8c7b-b5beabcb2e62">
+                        <IndicatorItem condition="is" id="7e122afb-6820-53bd-ac1f-d976c98983eb">
+                            <Context document="FileDownloadHistoryItem" search="FileDownloadHistoryItem/SourceURL"
+                                     type="mir"/>
+                            <Content type="string">upconfusepat.ru/3e122e2dd79b0dcab9df0e4c6d3d238f/625819-book
+                            </Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="da8849e7-2564-5709-81e7-0c5b7a244cad">
+                            <Context document="FileDownloadHistoryItem" search="FileDownloadHistoryItem/SourceURL"
+                                     type="mir"/>
+                            <Content type="string">73f2d1c5c7ea62da3b9f212a.appssharploads.ru/api/web/getInstaller
+                            </Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="3bb6a5ae-41bf-511a-af12-0f59c4114ea1">
+                            <Context document="FileDownloadHistoryItem" search="FileDownloadHistoryItem/SourceURL"
+                                     type="mir"/>
+                            <Content type="string">1d30c85c657d5957297fea73.oysiudyfisdf.ru</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="6fb061ce-b6e2-52d7-918e-dbd9511c4991">
+                            <Context document="FileDownloadHistoryItem" search="FileDownloadHistoryItem/SourceURL"
+                                     type="mir"/>
+                            <Content type="string">8eb7094dd3284344a7abc7ca.ksldhfkshfks.ru/api/web/getInstaller
+                            </Content>
+                        </IndicatorItem>
+                    </Indicator>
+                    <Indicator operator="OR" id="ee3069c4-c5a9-5594-9068-a1ad20349b5e">
+                        <IndicatorItem condition="is" id="9ef1b331-88aa-5782-9c23-228317aa358e">
+                            <Context document="UrlHistoryItem" search="UrlHistoryItem/URL" type="mir"/>
+                            <Content type="string">net-tak.net/favicon.ico</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="bfc24ba4-7c74-58ad-bed3-5b15e55e92be">
+                            <Context document="UrlHistoryItem" search="UrlHistoryItem/URL" type="mir"/>
+                            <Content type="string">dle.org.ua/favicon.ico</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="62ea1d9b-8fd9-56b5-a5d1-98c0a55032c9">
+                            <Context document="UrlHistoryItem" search="UrlHistoryItem/URL" type="mir"/>
+                            <Content type="string">www-odnoklassniki-ru.ru</Content>
+                        </IndicatorItem>
+                        <IndicatorItem condition="is" id="89b59d77-35c9-58f5-a5b0-fda276497f5e">
+                            <Context document="UrlHistoryItem" search="UrlHistoryItem/URL" type="mir"/>
+                            <Content type="string">octopus.elar.ru:8080/palpussetup/setup.exe</Content>
+                        </IndicatorItem>
+                    </Indicator>
+                </Indicator>
+            </Indicator>
+        </Indicator>
+    </definition>
+</ioc>

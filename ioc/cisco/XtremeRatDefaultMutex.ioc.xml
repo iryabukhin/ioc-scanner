@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="276920b4-b3e9-4c5e-9545-3752aced44a1" last-modified="2015-05-04T16:04:47" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>XtremeRATMutex</short_description>
+    <description>Xtreme Rat is a Remote Access Tool (RAT). It often injects its code in the memory space of explorer.exe and firefox.exe or other processes. In order to mark its presence in the system, it creates a mutex named 'EXTREMEUPDATE'. Xtreme Rat provides multiple features including remote command shell access, keylogging and screenshot capabilities, file management and encrypted communications. Check the associated processes and files created to better determine the level of malicious activity.</description>
+    <keywords/>
+    <authored_by>Research And Efficacy Team</authored_by>
+    <authored_date>2015-05-04T02:02:56</authored_date>
+    <links/>
+  </metadata>
+  <criteria>
+    <Indicator id="a979a9aa-2e4d-4d1b-8288-6cd59cd66805" operator="OR">
+      <Indicator id="9efc02ad-f2ff-4134-a3d3-94646814d552" operator="OR">
+        <IndicatorItem id="9212654c-57c6-4fdf-a031-4237c63ac678" condition="contains" preserve-case="false" negate="false">
+          <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+          <Content type="string">XTREMEUPDATE</Content>
+        </IndicatorItem>
+        <IndicatorItem id="995a2bbe-9e50-449a-aa02-4ee37fdb1944" condition="contains" preserve-case="false" negate="false">
+          <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+          <Content type="string">((Mutex))</Content>
+        </IndicatorItem>
+      </Indicator>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

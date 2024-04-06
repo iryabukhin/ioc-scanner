@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="d5d683ca-430b-4ad1-a795-42f6d21e32ca" last-modified="2014-10-10T17:16:22" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>Ramnit Default Mutex</short_description>
+    <description>Ramnit Default Mutex</description>
+    <keywords/>
+    <authored_by>ThreatGRID</authored_by>
+    <authored_date>2014-10-10T17:16:22</authored_date>
+    <links>
+      <link rel="category" href="Rootkit"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="5f040ae5-54ef-454e-a572-21ce485585b3" operator="OR">
+      <IndicatorItem id="779c6583-11c1-4b3d-865a-40e4cda12410" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">SYSTEM_DEMETRA</Content>
+      </IndicatorItem>
+      <IndicatorItem id="771f01a9-fb92-481e-bcf3-e4368cf7ed30" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">KyUffTh0lYwRRtgpp</Content>
+      </IndicatorItem>
+      <IndicatorItem id="93894afc-20c5-4e50-aaba-64ef6e77e62e" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">INTEL_CEDR_STORE</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

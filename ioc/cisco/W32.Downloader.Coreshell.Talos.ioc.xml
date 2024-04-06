@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="a9b4b1f1-cdbe-4213-a373-4f9878888446" last-modified="2015-04-24T13:55:04" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>W32.Downloader.Coreshell.Talos</short_description>
+    <description>IOC for old variants of the Coreshell downloader used by Group 74 (linked to Operation RussianDoll)</description>
+    <keywords/>
+    <authored_by>Talos</authored_by>
+    <authored_date>2015-04-22T16:46:40</authored_date>
+    <links>
+      <link rel="reference" href="https://bugzilla.vrt.sourcefire.com/show_bug.cgi?id=143213"/>
+      <link rel="Version" href="1.0"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="324414d2-7e5c-49c6-aabc-544367219e17" operator="OR">
+      <Indicator id="36939cd1-c49a-47fe-b331-0f0331fd023f" operator="AND">
+        <Indicator id="6c58a20e-3921-45a4-8a26-e9ff8e2313f8" operator="OR">
+          <IndicatorItem id="49855823-6bc4-4d80-98b9-74fac2316fa4" condition="is" preserve-case="false" negate="false">
+            <Context document="FileItem" search="FileItem/PEInfo/VersionInfoList/VersionInfoItem/OriginalFilename" type="mir"/>
+            <Content type="string">coreshell.dll</Content>
+          </IndicatorItem>
+        </Indicator>
+        <Indicator id="16abda73-2f17-4daf-9fdc-268e48d4d1d0" operator="OR">
+          <IndicatorItem id="4abd42de-c55f-4a96-9da8-f91527f1439f" condition="contains" preserve-case="false" negate="false">
+            <Context document="FileItem" search="FileItem/PEInfo/Exports/DllName" type="mir"/>
+            <Content type="string">Initialize</Content>
+          </IndicatorItem>
+          <IndicatorItem id="4f004178-29cd-47bf-b0d9-097d6eacae66" condition="contains" preserve-case="false" negate="false">
+            <Context document="FileItem" search="FileItem/PEInfo/Exports/DllName" type="mir"/>
+            <Content type="string">Applicate</Content>
+          </IndicatorItem>
+          <IndicatorItem id="3289d399-ec41-4581-aa33-2bf401370076" condition="contains" preserve-case="false" negate="false">
+            <Context document="FileItem" search="FileItem/PEInfo/Exports/DllName" type="mir"/>
+            <Content type="string">Init1</Content>
+          </IndicatorItem>
+        </Indicator>
+      </Indicator>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

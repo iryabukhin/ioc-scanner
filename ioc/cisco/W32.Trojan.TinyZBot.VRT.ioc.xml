@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="f8fe3f88-4b11-411f-b21f-67acae190f7b" last-modified="2015-01-08T21:37:29" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>W32.Trojan.TinyZBot.VRT</short_description>
+    <description>IOC created to alert on the file dropped by this malware and the mutex, which always starts with "demdaramdidam" followed by a dynamically generated number</description>
+    <keywords/>
+    <authored_by>VRT</authored_by>
+    <authored_date>2015-01-08T21:11:36</authored_date>
+    <links>
+      <link rel="reference" href="1.0"/>
+      <link rel="reference" href="http://www.cylance.com/assets/Cleaver/Cylance_Operation_Cleaver_Report.pdf"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="0a6e7896-36f5-41cf-9a9b-1c79975ec98c" operator="OR">
+      <IndicatorItem id="56518c4e-c03c-4a7b-b72c-c3761a09561a" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">demdaramdidam</Content>
+      </IndicatorItem>
+      <Indicator id="eccaaa90-47b5-4c3e-ab43-6ed3be9bd39b" operator="AND">
+        <IndicatorItem id="d4d09b45-cba6-400a-9f93-1584f5a1bb50" condition="is" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+          <Content type="string">netscp.exe</Content>
+        </IndicatorItem>
+        <IndicatorItem id="bff4cd6d-98a0-4742-8630-e2e7eaff7d5b" condition="is" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/PEInfo/ImportedModules/Module/Name" type="mir"/>
+          <Content type="string">mscoree.dll</Content>
+        </IndicatorItem>
+      </Indicator>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

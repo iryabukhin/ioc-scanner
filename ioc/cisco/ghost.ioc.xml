@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="c9fa9214-2b16-4c9d-9cfa-272c2acc03ef" last-modified="2014-10-10T17:08:31" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>Gh0st RAT Default Mutex</short_description>
+    <description>Gh0st RAT Default Mutex</description>
+    <keywords/>
+    <authored_by>ThreatGRID</authored_by>
+    <authored_date>2014-10-10T17:08:31</authored_date>
+    <links>
+      <link rel="category" href="Rootkit"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="26150bbc-10fa-465f-9d07-2abf263f5d7a" operator="OR">
+      <IndicatorItem id="709a82a5-0516-4158-aac4-ae87f8bb07c0" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">DOWNLOAD_SHELL_MUTEX_NAME</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

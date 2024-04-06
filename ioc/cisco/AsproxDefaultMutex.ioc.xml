@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="e24cb2ba-2be3-4fdc-8d6c-df33a7f18fbc" last-modified="2015-05-07T20:43:41" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>Asprox/Kuluoz Default Mutex</short_description>
+    <description>Asprox is a lightweight trojan that is used to maintain control of an infected host. The Asprox botnet, which first emerged in the threat landscape in 2007, has developed into a more modular framework that is known as KULUOZ. Kuluoz is the downloader of the botnet's other modules and arrives as attachments to spammed messages disguised as notifications from postal companies as well as airline booking confirmations. When executed on the system, KULUOZ variants drop a .TXT file so that users won't suspect malicious activity in the background. It also injects its code to certain processes and makes use of native APIs so that it will be difficult to debug and remove from the system. KULUOZ downloads other malware like FAKEAV, thus further compromising system security.</description>
+    <keywords/>
+    <authored_by>Research And Efficacy Team, AMP, Cisco</authored_by>
+    <authored_date>2015-05-07T20:40:36</authored_date>
+    <links/>
+  </metadata>
+  <criteria>
+    <Indicator id="a666b33b-efa9-4c30-aab0-7010dd803d89" operator="OR">
+      <IndicatorItem id="b6cfe4d4-bd2f-4ef7-baf1-d9ef1645b515" condition="ends-with" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">2GVWNQJz1</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

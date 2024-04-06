@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="57001700-94e6-47c3-b6cd-e3019dc170eb" last-modified="2015-11-20T20:46:36" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>DarkComet Default Mutex</short_description>
+    <description>DarkComet is a Remote Access Trojan that provides many very similar features to other commercially available RATs. Servers are built on the client machine and deployed to as many remote hosts as required; once deployed, they will make a connection back to the client and await commands. The client-side provides an administration console to manage all incoming connections, allowing full command and control capability and file system access.</description>
+    <keywords/>
+    <authored_by>Research And Efficacy Team, AMP, Cisco</authored_by>
+    <authored_date>2015-05-17T03:59:47</authored_date>
+    <links/>
+  </metadata>
+  <criteria>
+    <Indicator id="f932aeb0-4805-4143-8076-56722c0e7869" operator="OR">
+      <IndicatorItem id="086b2018-602f-4107-89fd-fcb58ffa42ba" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">DC_Mutex-</Content>
+      </IndicatorItem>
+      <IndicatorItem id="9ef797ad-bc4c-44be-b172-443fcb894df4" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">DCMIN_Mutex-</Content>
+      </IndicatorItem>
+      <IndicatorItem id="b7c7af23-5f9f-43fe-b6f0-c04186200178" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">_x_X_UPDATE_X_x_</Content>
+      </IndicatorItem>
+      <IndicatorItem id="8a627e40-ffbb-40ea-b45a-9c8eaf67f1d3" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">_x_X_BLOCKMOUSE_X_x_</Content>
+      </IndicatorItem>
+      <IndicatorItem id="9cb5b8e3-cbac-47a1-bb3d-36911549d048" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">SPY_NET_RATMUTEX</Content>
+      </IndicatorItem>
+      <IndicatorItem id="cfef5f84-db9e-468a-8eb9-3c42e6f71bf9" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">JoKeR_MaSK_SEMUTEX</Content>
+      </IndicatorItem>
+      <IndicatorItem id="54aa711c-4305-4d2f-9035-b11402c4fa7e" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">JoKeR/M@SK</Content>
+      </IndicatorItem>
+      <IndicatorItem id="dfa321e0-b3e9-409c-9d82-240ca25c85f3" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">_x_X_PASSWORDLIST_X_x_</Content>
+      </IndicatorItem>
+      <IndicatorItem id="dedc64f7-542a-482c-aa47-2aaa8fed1034" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">_y_X_PASSWORDLIST_X_y_</Content>
+      </IndicatorItem>
+      <IndicatorItem id="1d889ed1-6cbb-40f0-bf68-49147b54dc6c" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">HACKEDSYSTEM</Content>
+      </IndicatorItem>
+      <IndicatorItem id="f12727b8-0fbf-4f4b-8a98-4fe7e636bee4" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">_PERSIST</Content>
+      </IndicatorItem>
+      <IndicatorItem id="b51d1072-4781-4370-9b3c-60a155a5fe91" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">_SAIR</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

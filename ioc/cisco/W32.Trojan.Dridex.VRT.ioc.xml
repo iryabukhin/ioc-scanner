@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="c3489e92-ebbd-466b-af29-2b83093026be" last-modified="2015-01-20T18:55:31" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>W32.Trojan.Dridex.VRT</short_description>
+    <description>This IOC identifies a file dropped by Dridex named with a static prefix. The dropped file has variable names with static locations and consistent dll imports.</description>
+    <keywords/>
+    <authored_by>VRT</authored_by>
+    <authored_date>2015-01-16T19:40:31</authored_date>
+    <links>
+      <link rel="reference" href="1.0"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="efbb52e7-3d1c-41ef-aacb-4920fbc09af7" operator="OR">
+      <Indicator id="13554424-0a98-4539-8831-258e102ef53c" operator="AND">
+        <IndicatorItem id="a2f55e34-2828-4c0a-b0b5-f5b3872ab019" condition="contains" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/FullPath" type="mir"/>
+          <Content type="string">C:\Documents and Settings</Content>
+        </IndicatorItem>
+        <IndicatorItem id="da1b6a44-f542-4d2d-a1ef-48881d7d53d2" condition="is" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/PEInfo/ImportedModules/Module/Name" type="mir"/>
+          <Content type="string">pdh.dll</Content>
+        </IndicatorItem>
+        <IndicatorItem id="24007987-6baf-48e0-b2ca-f305cb08cad7" condition="is" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/PEInfo/ImportedModules/Module/Name" type="mir"/>
+          <Content type="string">SHELL32.dll</Content>
+        </IndicatorItem>
+        <IndicatorItem id="492fca21-3c82-4696-b2a9-084e23b739e0" condition="is" preserve-case="false" negate="false">
+          <Context document="FileItem" search="FileItem/PEInfo/ImportedModules/Module/Name" type="mir"/>
+          <Content type="string">KERNEL32.dll</Content>
+        </IndicatorItem>
+        <Indicator id="9bbe15aa-1f6e-4764-be93-5c2fd7fc6839" operator="OR">
+          <IndicatorItem id="412bf069-4023-4848-b09e-e5eaf0c6b741" condition="contains" preserve-case="false" negate="false">
+            <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+            <Content type="string">edg</Content>
+          </IndicatorItem>
+          <IndicatorItem id="5bf6359b-dfb9-4cda-b311-581eca0731d0" condition="contains" preserve-case="false" negate="false">
+            <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+            <Content type="string">.exe</Content>
+          </IndicatorItem>
+        </Indicator>
+        <Indicator id="7e2adeeb-be00-4019-b827-34e8e730332b" operator="OR">
+          <IndicatorItem id="239a0086-5fb0-4db1-af68-76a7557b9163" condition="contains" preserve-case="false" negate="false">
+            <Context document="FileItem" search="FileItem/FullPath" type="mir"/>
+            <Content type="string">Local Settings\Application Data\</Content>
+          </IndicatorItem>
+          <IndicatorItem id="4788117d-7a92-442d-814b-5dae8f637f10" condition="contains" preserve-case="false" negate="false">
+            <Context document="FileItem" search="FileItem/FullPath" type="mir"/>
+            <Content type="string">AppData\Local\</Content>
+          </IndicatorItem>
+        </Indicator>
+      </Indicator>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

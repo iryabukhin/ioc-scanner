@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="5448ef1b-997f-472b-9132-e7bd4a3dfc4a" last-modified="2014-10-01T18:05:05" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>TDSS Mutex</short_description>
+    <description>TDSS Mutex</description>
+    <keywords/>
+    <authored_by>ThreatGRID</authored_by>
+    <authored_date>2014-10-01T18:03:53</authored_date>
+    <links/>
+  </metadata>
+  <criteria>
+    <Indicator id="367e3120-9f68-4fc4-b8e6-6bdc910d52fd" operator="OR">
+      <IndicatorItem id="3746208c-a13d-4df5-b61b-b28f92f25859" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">\TdlStartMutex</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

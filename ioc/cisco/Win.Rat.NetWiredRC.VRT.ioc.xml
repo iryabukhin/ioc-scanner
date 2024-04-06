@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="cd95b7ca-be3b-426c-b1fe-daeb3b8bd1b0" last-modified="2015-02-06T16:36:44" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>Win.Rat.NetWiredRC.VRT</short_description>
+    <description>Win.Rat.NetWiredRC.VRT detection. Detection of a variant of NetWiredRC that needs to be in a specific location on the filesystem with a specific name the string is based on the mutability of the folder AppData/Application Data</description>
+    <keywords/>
+    <authored_by>TALOS</authored_by>
+    <authored_date>2014-11-25T00:00:00</authored_date>
+    <links>
+      <link rel="report" href="http://www.circl.lu/pub/tr-23/"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="2f1cbe93-307e-4759-8e8f-4296110df55e" operator="OR">
+      <IndicatorItem id="e40f60e2-5d6d-446b-98d1-7780f3238bd4" condition="contains" preserve-case="false" negate="false">
+        <Context document="FileItem" search="FileItem/FullPath" type="mir"/>
+        <Content type="string">Data\Microsoft\fuast.exe</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

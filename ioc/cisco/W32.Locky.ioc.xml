@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+         xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="2c1b0315-009d-4323-9801-fee486708f30"
+         last-modified="2016-03-15T14:32:02" published-date="0001-01-01T00:00:00">
+    <metadata>
+        <short_description>W32.Locky.IOC</short_description>
+        <description>Locky is a ransomware that encrypts files on the compromised computer and then prompts the user to
+            purchase a password in order to decrypt them. The usual infection vector is a malicious macro laced
+            Microsoft Office document received in an enticing email. Upon opening, the document entices users to enable
+            macros to fix 'encoding' issues. If macros are enabled, a downloader is dropped and executed, leading to
+            subsequent download and execution of locky. Locky then proceeds to encrypt files on disk matching a long
+            list of extentions, including files on shared network drives, renaming them with a '.locky' extension. It
+            also removes shadow copies to make recovery harder. Decryption instructions are placed on the desktop in
+            several formats and set as the Desktop wallpaper. The instructions generally point to a darkweb site, which
+            demand a ransom, usually in Bitcoins, in return for the private key and a decrypter program.
+        </description>
+        <keywords/>
+        <authored_by>Research And Efficacy Team</authored_by>
+        <authored_date>2016-03-15T14:30:29</authored_date>
+        <links/>
+    </metadata>
+    <criteria>
+        <Indicator id="6fc9fc2d-5c34-415b-99c7-cf94459bf1c3" operator="OR">
+            <IndicatorItem id="f652b38a-5550-474b-b664-762bdad04cc9" condition="contains" preserve-case="false"
+                           negate="false">
+                <Context document="FileItem" search="FileItem/FileName" type="mir"/>
+                <Content type="string">_Locky_recover_instructions.txt</Content>
+            </IndicatorItem>
+        </Indicator>
+    </criteria>
+    <parameters/>
+</OpenIOC>

@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="9982f17a-1d94-4636-b74d-88b452b01f24" last-modified="2014-11-25T19:57:51" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>Powelike</short_description>
+    <description/>
+    <keywords/>
+    <authored_by>FireAMP</authored_by>
+    <authored_date>2014-11-25T18:30:34</authored_date>
+    <links/>
+  </metadata>
+  <criteria>
+    <Indicator id="4781b93e-4a8f-4ff4-b013-e88c1fc52607" operator="OR">
+      <Indicator id="acc44405-dd31-4b62-96c1-65d470d283cf" operator="AND">
+        <IndicatorItem id="484abc8c-5660-4bb8-b5ce-c99e146cced7" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/Text" type="mir"/>
+          <Content type="string">rundll32.exe javascript:"\..\mshtml,RunHTMLApplication</Content>
+        </IndicatorItem>
+        <IndicatorItem id="00be45a6-3927-4273-a60d-80a963b9726e" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/Text" type="mir"/>
+          <Content type="string">eval</Content>
+        </IndicatorItem>
+      </Indicator>
+      <Indicator id="7819ab3e-bac1-44ab-bbc9-d175c2cf9ace" operator="AND">
+        <IndicatorItem id="0d6bf9af-a8a9-4725-97ab-7d7f04ce9784" condition="is" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>
+          <Content type="string">a</Content>
+        </IndicatorItem>
+        <IndicatorItem id="6d47fe90-85bc-4753-84be-e3b2fbbc3137" condition="greater-than" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/ReportedLengthInBytes" type="mir"/>
+          <Content type="int">50000</Content>
+        </IndicatorItem>
+      </Indicator>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

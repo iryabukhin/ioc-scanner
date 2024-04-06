@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="f771f594-e7e6-4365-807a-981d7671a703" last-modified="2015-05-02T02:23:39" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>PoisonIvyDefaultMutex</short_description>
+    <description>Poison Ivy is a Remote Access Tool (RAT). It often injects its code in the memory space of explorer.exe and firefox.exe or other processes. In order to mark its presence in the system it creates a mutex named ')!VoqA.I4'. Poison Ivy provides multiple features including remote command shell access, keylogging and screenshot capabilities, file management and encrypted communications. Poison Ivy plugins are often hidden in alternate data streams. Persistence is maintained by modifying the 'StubPath' value of the Active Setup Registry Key. Check the associated processes and files created to better determine the level of malicious activity</description>
+    <keywords/>
+    <authored_by>Cisco Research And Efficacy Team</authored_by>
+    <authored_date>2015-05-02T01:14:26</authored_date>
+    <links>
+      <link rel="report" href="http://volatility-labs.blogspot.mx/2012/10/reverse-engineering-poison-ivys.html"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="8b0e99b4-8d32-4cd2-aedf-a68d9819e99b" operator="OR">
+      <IndicatorItem id="281f4508-ae6d-4ba0-ba84-29a37579c917" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">)!VoqA.I4</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

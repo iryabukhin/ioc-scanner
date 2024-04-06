@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="2d43c0d6-0024-487d-b833-cdaba50230f5" last-modified="2015-05-09T05:09:33" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>Parite Default Mutex</short_description>
+    <description>Parite is a file infector that spreads by infecting .exe and .scr files on all local and network attached drives. When found, it adds itself to these files and is executed when they are launched. It is rate-limited, so only a few files are infected at a time. The Explorer process is also infected to keep the virus present in memory. The mutex 'Residented' prevents multiple executions on a single host. Parite may also attempt to download other malware.</description>
+    <keywords/>
+    <authored_by>Research And Efficacy Team, AMP, Cisco</authored_by>
+    <authored_date>2015-05-08T21:22:43</authored_date>
+    <links>
+      <link rel="report" href="http://www.trendmicro.com/vinfo/us/threat-encyclopedia/malware/PE_PARITE.A"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="67af1cf2-4a34-43ba-bc20-83b0d6904935" operator="OR">
+      <IndicatorItem id="392261ff-34fc-43f6-af90-12fb0dae7a14" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">Residented</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>

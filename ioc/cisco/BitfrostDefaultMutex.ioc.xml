@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="2cff55b1-4856-4930-b2c9-429b3ea242c0" last-modified="2015-05-11T17:32:48" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>BifrostDefaultMutex</short_description>
+    <description>Bifrost is a Backdoor with more than 10 variants which can infect windows 95 through Windows 7. Bifrost uses the typical server, server builder, and client backdoor program configuration to allow a remote attacker, who uses the client, to execute arbitrary code on the compromised machine. Bifrost contains standard RAT features including a file manager, screen capture utility, keylogging, video recording, microphone and camera monitoring, and a process manager. In order to mark its presence in the system, Bifrost creates a mutex with a default name of 'Bif1234'.</description>
+    <keywords/>
+    <authored_by>Research And Efficacy Team, AMP, Cisco</authored_by>
+    <authored_date>2015-05-11T17:28:59</authored_date>
+    <links/>
+  </metadata>
+  <criteria>
+    <Indicator id="5d9828c2-cb8b-4752-bf22-d7fd8386ae9a" operator="OR">
+      <IndicatorItem id="8ed9dde7-d5a3-49ca-8f1b-957be2aedb9d" condition="contains" preserve-case="false" negate="false">
+        <Context document="ProcessItem" search="ProcessItem/HandleList/Handle/Name" type="mir"/>
+        <Content type="string">Bif1234</Content>
+      </IndicatorItem>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>
