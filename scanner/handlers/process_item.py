@@ -1,12 +1,14 @@
 import psutil
 import socket
 import hashlib
+import os
 from typing import List, Dict, Optional, Union, Callable
 
 from loguru import logger
 
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator
+from scanner.utils import OSType
 from scanner.utils.hash import calculate_hash
 
 
@@ -29,6 +31,9 @@ class ProcessItemHandler(BaseHandler):
             'ProcessItem/HandleList/Handle/SocketLocalPort',
             'ProcessItem/HandleList/Handle/SocketRemoteAddress',
             'ProcessItem/HandleList/Handle/SocketRemotePort',
+            'ProcessItem/HandleList/Handle/Md5sum',
+            'ProcessItem/HandleList/Handle/Sha1sum',
+            'ProcessItem/HandleList/Handle/Sha256sum',
         ]
 
     def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
@@ -47,10 +52,22 @@ class ProcessItemHandler(BaseHandler):
 
     def _populate_process_info(self) -> None:
         self._process_info = {}
+
+        def add_to_data(data, items):
+            for item in items:
+                for key, value in item.items():
+                    key = f'ProcessItem/HandleList/Handle/{key}'
+                    data.setdefault(key, []).append(value)
+
         for proc in psutil.process_iter():
-            self._process_info[str(proc.pid)] = {
-                **self._fetch_basic_process_data(proc),
-            }
+            data = self._fetch_basic_process_data(proc)
+            if OSType.is_linux():
+                handles = list(self._get_process_handles(proc))
+                sockets = list(self._get_process_sockets(proc))
+                add_to_data(data, handles)
+                add_to_data(data, sockets)
+
+            self._process_info[str(proc.pid)] = data
 
     def _fetch_basic_process_data(self, proc) -> Dict:
         return {
@@ -59,7 +76,7 @@ class ProcessItemHandler(BaseHandler):
             'Username': proc.username(),
             'arguments': ' '.join(proc.cmdline()[1:]) if len(proc.cmdline()) > 1 else '',
             'startTime': proc.create_time(),
-            'path': proc.cmdline(),
+            'path': proc.exe(),
             'parentpid': proc.ppid()
         }
 
@@ -72,30 +89,27 @@ class ProcessItemHandler(BaseHandler):
                     'Sha256sum': calculate_hash(file.path, hashlib.sha256),
                     'User': process.username(),
                     'FileDescriptor': file.fd,
+                    'Size': os.path.getsize(file.path),
                 }
         except psutil.NoSuchProcess:
-            print(f'No process found with PID {str(process.pid)}')
-            return []
+            logger.error(f'No process found with PID {str(process.pid)}')
         except Exception as e:
-            print(f'Error occurred while retrieving handles for process {str(process.pid)}: {str(e)}')
-            return []
+            logger.error(f'Error occurred while retrieving handles for process {str(process.pid)}: {str(e)}')
 
     def _get_process_sockets(self, process: psutil.Process):
         try:
             for c in process.connections():
                 yield {
-                    'SocketType': '',  # TODO: find out how to determine socket type on win/linux
+                    'SocketType': self._get_socket_type(c.type),
                     'SocketProtocol': self._get_socket_type(c.type),
                     'SocketState': c.status,
-                    'SocketLocalAddress': c.laddr.ip,
-                    'SocketLocalPort': str(c.laddr.port),
-                    'SocketRemoteAddress': c.raddr.ip,
-                    'SocketRemotePort': str(c.raddr.port),
+                    'SocketLocalAddress': c.laddr.ip if c.laddr else '',
+                    'SocketLocalPort': str(c.laddr.port) if c.laddr else '',
+                    'SocketRemoteAddress': c.raddr.ip if c.raddr else '',
+                    'SocketRemotePort': str(c.raddr.port) if c.raddr else '',
                 }
         except Exception as e:
-            logger.error(
-                f'Error occurred while retrieving active sockets for process {str(process.pid): {str(e)}}'
-            )
+            logger.error(f'Error occurred while retrieving active sockets for process {str(process.pid)}: {str(e)}')
             raise e
 
     def _get_socket_type(self, kind) -> str:
@@ -105,7 +119,6 @@ class ProcessItemHandler(BaseHandler):
             socket.SocketKind.SOCK_RAW: 'RAW',
             socket.SocketKind.SOCK_RDM: 'RDM',
             socket.SocketKind.SOCK_SEQPACKET: 'SEQPACKET'
-        }.get(kind, None)
-
+        }.get(kind, 'Unknown')  # Default to 'Unknown' if kind is not found
 def init():
     return ProcessItemHandler()

@@ -12,7 +12,9 @@ from scanner.models import IndicatorItem, IndicatorItemOperator
 
 class LocalPortHandler(BaseHandler):
     def __init__(self, config: ConfigObject):
+        self.config = config
         self._port_info = {}
+        self._process_cache = {}
 
     @staticmethod
     def get_supported_terms() -> List[str]:
@@ -32,7 +34,7 @@ class LocalPortHandler(BaseHandler):
     def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
         valid_items = []
         for item in items:
-            term = self._get_value_to_check(item)
+            term = item.get_term()
             if not term:
                 return False
 
@@ -41,50 +43,41 @@ class LocalPortHandler(BaseHandler):
 
         return bool(valid_items) if operator is IndicatorItemOperator.OR else len(valid_items) == len(items)
 
-    def _get_value_to_check(self, item: IndicatorItem):
-        try:
-            return item.context.search.split('/')[1]
-        except Exception as e:
-            return None
-
-
     def _populate_port_info(self):
         connections = psutil.net_connections()
         for conn in connections:
-            # skip sockets that are not UDP or TCP
             if conn.type not in [socket.SOCK_STREAM, socket.SOCK_DGRAM]:
                 continue
 
-            self._port_info[conn.laddr.port] = {
+            protocol = 'TCP' if conn.type == socket.SOCK_STREAM else 'UDP'
+            key = (conn.laddr.ip, conn.laddr.port, protocol)
+            self._port_info[key] = {
                 'localIP': conn.laddr.ip,
-                'remoteIP': conn.raddr.ip,
+                'remoteIP': conn.raddr.ip if conn.raddr else '',
                 'localPort': conn.laddr.port,
-                'remotePort': conn.raddr.port,
-                'protocol': 'TCP' if conn.type == socket.SOCK_STREAM else 'UDP',
+                'remotePort': conn.raddr.port if conn.raddr else 0,
+                'protocol': protocol,
                 'state': conn.status,
             }
 
-            if conn.pid is None:
-                continue
-
-            proc = psutil.Process(conn.pid)
-
-            self._port_info[conn.laddr.port]['pid'] = proc.pid
-            self._port_info[conn.laddr.port]['path'] = proc.cmdline()
-            # TODO: the creation time of the socket might differ from the creation time of the process,
-            #  thus we need to figure out how to actually get the creation time of the socket
-            self._port_info[conn.laddr.port]['CreationTime'] = datetime.fromtimestamp(proc.create_time())
+            if conn.pid and conn.pid not in self._port_info:
+                try:
+                    proc = psutil.Process(conn.pid)
+                    self._process_cache[conn.pid] = {
+                        'pid': proc.pid,
+                        'path': proc.exe(),
+                        'CreationTime': datetime.fromtimestamp(proc.create_time())
+                    }
+                except psutil.NoSuchProcess:
+                    continue
+            self._port_info[key].update(self._process_cache[conn.pid])
 
     def _evaluate_condition(self, term: str, item: IndicatorItem):
         if not self._port_info:
             self._populate_port_info()
 
         value_to_check = item.content.content
-        found = filter(
-            lambda c: c.get(term) == value_to_check,
-            self._port_info
-        )
-        found = len(found) > 0
+        found = any(c.get(term) == value_to_check for c in self._port_info.values())
         return not found if item.negate else found
 
 def init(config: ConfigObject):

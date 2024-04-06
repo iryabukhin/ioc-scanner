@@ -58,17 +58,17 @@ class FileItemHandler(BaseHandler):
     @staticmethod
     def get_supported_terms() -> List[str]:
         return [
-            'FileItem/Md5sum',
-            'FileItem/Sha1sum',
-            'FileItem/Sha256sum',
-            'FileItem/FileName',
-            'FileItem/FilePath',
-            'FileItem/FullPath'
-            'FileItem/FileExtension',
-            'FileItem/SizeInBytes',
-            'FileItem/Created',
-            'FileItem/Modified',
-            'FileItem/Accessed',
+'FileItem/Md5sum',
+'FileItem/Sha1sum',
+'FileItem/Sha256sum',
+'FileItem/FileName',
+'FileItem/FilePath',
+'FileItem/FullPath'
+'FileItem/FileExtension',
+'FileItem/SizeInBytes',
+'FileItem/Created',
+'FileItem/Modified',
+'FileItem/Accessed',
         ]
 
     def _build_file_info(self, full_path: str) -> Dict:

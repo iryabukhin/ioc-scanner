@@ -5,6 +5,7 @@ import subprocess
 
 from typing import List, Dict, Union, Optional
 
+from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
 from scanner.utils import OSType, get_cmd_output
@@ -19,8 +20,8 @@ class ArpEntryHandler(BaseHandler):
     IPV4_ADDR_FAMILY_ID = 2
     STORE_PERSISTENT_VAL = 6
 
-    def __init__(self):
-        pass
+    def __init__(self, config):
+        self.config = config
 
     @staticmethod
     def get_supported_terms() -> List[str]:
@@ -30,7 +31,6 @@ class ArpEntryHandler(BaseHandler):
             'ArpEntryItem/CacheType',
             'ArpEntryItem/IPv4Address',
             'ArpEntryItem/IPv6Address',
-            'ArpEntryItem/PhysicalAddress',
             # 'ArpEntryItem/IsRouter',
             # 'ArpEntryItem/LastReachable',
             # 'ArpEntryItem/LastUnreachable',
@@ -39,14 +39,16 @@ class ArpEntryHandler(BaseHandler):
     def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
         valid_items = []
         for item in items:
-            if self._find_matched_arp_entries(item):
+            matched = self._find_matched_arp_entries(item)
+            logger.debug(f'Found {len(matched)} matching ARP entries for item {item.id}: {str(matched)}')
+            if len(matched) > 0:
                 valid_items.append(item)
 
         return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
 
     def _find_matched_arp_entries(self, item: IndicatorItem) -> List[IndicatorItem]:
         result = []
-        term = item.context.search.split('/')[-1]
+        term = item.get_term()
         if OSType.is_win():
             output = self._fetch_win_arp_entries()
         elif OSType.is_linux():
@@ -61,9 +63,9 @@ class ArpEntryHandler(BaseHandler):
         return result
 
     def _fetch_win_arp_entries(self) -> List:
-        if self._is_powershell_available():
-            return self._parse_pwrsh_arp_entries()
-        return self._parse_win_arp_cmd_entries()
+        return self._parse_win_arp_cmd_entries() \
+            if self._is_powershell_available() \
+            else self._parse_win_arp_cmd_entries()
 
     def _is_powershell_available(self) -> bool:
         try:
@@ -78,11 +80,12 @@ class ArpEntryHandler(BaseHandler):
     def _fetch_linux_arp_entries(self) -> List:
         cmd_output = self._get_cmd_output(['arp', '-en']).splitlines()
         if len(cmd_output) < 2:
-            logger.info('No data returned from linux "arp" command, skipping output processing...')
+            logger.warning('No data returned from linux "arp" command, skipping output processing...')
             return []
 
         cmd_output.pop(0)  # remove header
 
+        ret = list()
         for line in cmd_output:
             entry = dict()
             cols = line.split()
@@ -99,7 +102,8 @@ class ArpEntryHandler(BaseHandler):
             flags = list(cols[3])
             entry['CacheType'] = self._determine_cache_type(flags)
 
-            yield entry
+            ret.append(entry)
+        return ret
 
     def _determine_cache_type(self, flags: List[str]) -> str:
         if 'M' in flags:
@@ -155,7 +159,7 @@ class ArpEntryHandler(BaseHandler):
             cmd_output
         )
         if not matches:
-            logger.info('No data returned from win "arp -a" command, nothing to process...')
+            logger.warning('No data returned from win "arp -a" command, nothing to process...')
             return result
 
         for match in matches:
@@ -193,8 +197,11 @@ class ArpEntryHandler(BaseHandler):
                 f'stderr: {e.stderr}',
             ]))
             return ''
+        except subprocess.TimeoutExpired as e:
+            logger.error(f'Timeout while executing shell command: {str(e)}')
+            return ''
 
 
 
-def init():
-    return ArpEntryHandler()
+def init(config: ConfigObject):
+    return ArpEntryHandler(config)
