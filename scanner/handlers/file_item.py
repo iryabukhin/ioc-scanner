@@ -105,17 +105,23 @@ class FileItemHandler(BaseHandler):
 
     def _populate_cache(self, root: Optional[str] = None) -> None:
         if root is None:
-            root = self._get_root_path()
+            if OSType.is_win():
+                if self._scan_all_drives:
+                    for drive_base_path in self._get_all_drives():
+                        self._populate_cache(drive_base_path)
+                else:
+                    root = self.WIN_SYS_DRIVE
+            elif OSType.is_linux():
+                root = self.LINUX_DEFAULT_ROOT_PATH
+
         self.file_cache = {
             i['FileItem/FilePath'] for i in self._recursive_scan(root)
         }
 
-    def _recursive_scan(self, root: Optional[str] = None) -> List[Dict]:
-        root = root or self._get_root_path()
-
-        logger.info(f'Begin scanning root path "{root}" ...')
+    def _recursive_scan(self, root: str) -> List[Dict]:
+        logger.debug(f'Begin scanning root path "{root}" ...')
         if not os.path.exists(root):
-            logger.info(f'Path {root} does not exist, aborting scan...')
+            logger.warning(f'Path {root} does not exist, aborting scan...')
             return []
 
         for rootdir, dirs, files in os.walk(root, topdown=True, followlinks=False):
@@ -129,7 +135,7 @@ class FileItemHandler(BaseHandler):
                     except PermissionError as e:
                         logger.warning(f'Could not scan file "{fpath}" due to permission error: {str(e)}')
                     except Exception as e:
-                        logger.warning(f'Could not scan file "{fpath}" due to unknown error: {str(e)}')
+                        logger.warning(f'Could not scan file "{fpath}" due to an unknown error: {str(e)}')
 
     def _get_all_drives(self) -> List[str]:
         return [p.mountpoint for p in psutil.disk_partitions() if p.fstype == 'NTFS']
@@ -145,12 +151,6 @@ class FileItemHandler(BaseHandler):
         except Exception as e:
             logger.error(f'Error getting creation time for {full_path}: {e}')
             return None
-
-    def _get_root_path(self) -> str:
-        if OSType.is_win():
-            return self.WIN_SYS_DRIVE if not self._scan_all_drives else self._get_all_drives()
-        elif OSType.is_linux():
-            return self.LINUX_DEFAULT_ROOT_PATH
 
     def _should_skip(self, path: str) -> bool:
         lower_path = path.lower()
