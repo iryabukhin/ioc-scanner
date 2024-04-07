@@ -46,7 +46,7 @@ class RegistryItemHandler(BaseHandler):
     }
 
     def __init__(self,  config: ConfigObject):
-        self.config = config
+        super().__init__(config)
         self._registry_cache = {}
 
     @staticmethod

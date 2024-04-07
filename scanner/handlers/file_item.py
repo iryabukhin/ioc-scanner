@@ -40,7 +40,8 @@ class FileItemHandler(BaseHandler):
     MAX_FILE_SIZE_MB = 32
 
     def __init__(self, config: ConfigObject):
-        self.config = config
+        super().__init__(config)
+
         self.file_cache = {}
 
         self._scan_all_drives = config.file_item.scan_all_drives or False

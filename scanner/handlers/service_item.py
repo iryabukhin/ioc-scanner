@@ -36,8 +36,8 @@ class ServiceItemHandler(BaseHandler):
     }
 
     def __init__(self, config: ConfigObject):
-        super().__init__()
-        self.config = config
+        super().__init__(config)
+
         self._service_cache = {}
 
         self._scan_executable_signature = config.service_item.scan_executable_signature or False

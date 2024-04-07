@@ -38,7 +38,7 @@ class EventLogItemHandler(BaseHandler):
     }
 
     def __init__(self, config: ConfigObject):
-        self.config = config
+        super().__init__(config)
         self._log_entry_cache = {}
 
     @staticmethod

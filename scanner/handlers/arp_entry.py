@@ -21,7 +21,7 @@ class ArpEntryHandler(BaseHandler):
     STORE_PERSISTENT_VAL = 6
 
     def __init__(self, config):
-        self.config = config
+        super().__init__(config)
 
     @staticmethod
     def get_supported_terms() -> List[str]:

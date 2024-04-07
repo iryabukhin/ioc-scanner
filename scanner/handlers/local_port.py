@@ -12,7 +12,8 @@ from scanner.models import IndicatorItem, IndicatorItemOperator
 
 class LocalPortHandler(BaseHandler):
     def __init__(self, config: ConfigObject):
-        self.config = config
+        super().__init__(config)
+
         self._port_info = {}
         self._process_cache = {}
 
