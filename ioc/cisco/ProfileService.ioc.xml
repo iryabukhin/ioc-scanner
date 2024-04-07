@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://openioc.org/schemas/OpenIOC_1.1" id="ba6313c3-e357-4d2e-9806-759c89e0e359" last-modified="2015-02-12T22:15:02" published-date="0001-01-01T00:00:00">
+  <metadata>
+    <short_description>W32.Exploit.CVE_2015_0004</short_description>
+    <description>This IOC looks for user variables containing directory traversal attempts following a user profile created regardless of the access restrictions currently in place on the host.</description>
+    <keywords/>
+    <authored_by>Christopher Marczewski</authored_by>
+    <authored_date>2015-01-13T17:34:23</authored_date>
+    <links>
+      <link rel="reference" href="technet.microsoft.com/en-us/security/bulletin/ms15-003"/>
+      <link rel="version" href="1.0"/>
+    </links>
+  </metadata>
+  <criteria>
+    <Indicator id="833a2af3-0173-4295-a5b4-b97143f2ebc6" operator="OR">
+      <IndicatorItem id="bbf42860-8064-469f-a1a7-746f29634cf2" condition="is" preserve-case="false" negate="false">
+        <Context document="RegistryItem" search="RegistryItem/Hive" type="mir"/>
+        <Content type="string">HKEY_CURRENT_USER</Content>
+      </IndicatorItem>
+      <Indicator id="6084d5ef-f46b-44ec-b0d3-be795bd10055" operator="AND">
+        <IndicatorItem id="e05524e8-38ed-41e7-8535-2436d6284a33" condition="contains" preserve-case="false" negate="false">
+          <Context document="RegistryItem" search="RegistryItem/Text" type="mir"/>
+          <Content type="string">%USERPROFILE%\..\</Content>
+        </IndicatorItem>
+      </Indicator>
+    </Indicator>
+  </criteria>
+  <parameters/>
+</OpenIOC>
