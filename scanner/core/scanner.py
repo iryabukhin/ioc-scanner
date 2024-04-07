@@ -21,39 +21,55 @@ class IOCScanner:
     lazy_evaluation = False
     scanned_iocs = {}
     handlers: Dict[str, BaseHandler] = {}
+    handlers_by_type: Dict[str, BaseHandler] = {}  # optimized handler lookup
 
     def __init__(self, config: ConfigObject):
         self.config = config
-        self.__init_handlers()
+        logger.info("Initializing IOCScanner...")
+        if not IOCScanner.handlers:
+            self.__init_handlers()
+            self.__organize_handlers_by_type()
 
     def __init_handlers(self):
+        logger.info("Initializing handlers...")
         handlers_dir = os.getenv(
             'HANDLERS_BASE_DIR',
             os.path.join(os.path.dirname(os.path.dirname(__file__)), 'handlers')
         )
         for fname in os.listdir(handlers_dir):
-            if fname.endswith('.py') and not fname == '__init__.py':
+            if fname.endswith('.py') and fname != '__init__.py':
+                module_name = fname[:-3]
                 try:
-                    mn = fname[0:-3]
-                    module = importlib.import_module(f'scanner.handlers.{mn}')
+                    module = importlib.import_module(f'scanner.handlers.{module_name}')
                     if not hasattr(module, 'init') or not callable(module.init):
-                        logger.error(f'Handler {mn} does not implement init() method, skipping initialization...')
+                        logger.error(f'Handler {module_name} does not implement init() method, skipping initialization...')
                         continue
                     handler = module.init(config=self.config)
                     if not isinstance(handler, BaseHandler):
-                        logger.error(f'Handler {mn} does not implement BaseHandler interface, skipping initialization...')
+                        logger.error(f'Handler {module_name} does not implement BaseHandler interface, skipping initialization...')
                         continue
-                    self.handlers.update({t: handler for t in handler.get_supported_terms()})
+                    logger.info(f'Successfully initialized handler: {module_name}')
+                    IOCScanner.handlers.update({t: handler for t in handler.get_supported_terms()})
                 except ImportError as e:
                     logger.error(f'Unable to import module {fname}: {e}')
                 except Exception as e:
                     logger.error(f'Error loading handler from module {fname}: {e}')
 
+    def __organize_handlers_by_type(self):
+        for term, handler in IOCScanner.handlers.items():
+            item_type = term.split('/')[0]
+            IOCScanner.handlers_by_type[item_type] = handler
+
     def process(self, indicators: List[Indicator]):
-        return [i.id for i in indicators if self.validate_indicator(i)]
+        logger.info(f"Processing {len(indicators)} indicators...")
+        processed_ids = [i.id for i in indicators if self.validate_indicator(i)]
+        logger.info(f"Processed indicators. Valid indicators: {len(processed_ids)}")
+        return processed_ids
 
     def validate_indicator(self, indicator: Indicator) -> bool:
-        if not self.handlers:
+        logger.debug(f"Validating indicator: {indicator.id}")
+        if not IOCScanner.handlers:
+            logger.error('No handlers have been loaded!')
             raise Exception('No handlers have been loaded!')
 
         valid_children = (
@@ -61,41 +77,39 @@ class IOCScanner:
             + self._validate_child_indicators(indicator)
         )
 
-        return self._evaluate_logic(valid_children, indicator)
+        result = self._evaluate_logic(valid_children, indicator)
+        logger.debug(f"Indicator {indicator.id} validation result: {result}")
+        return result
 
     def _validate_indicator_items(self, indicator: Indicator) -> List[IndicatorItem]:
-        """Validate indicator items within an indicator."""
+        logger.debug(f"Validating indicator items for indicator: {indicator.id}")
         valid_items = []
         child_items = [i for i in indicator.items if isinstance(i, IndicatorItem)]
 
-        # TODO: Move to __init_handlers method and make it into a property
-        handlers_by_type = {}
-        for k, v in self.handlers.items():
-            type = k.split('/')[0]
-            if type not in handlers_by_type:
-                handlers_by_type[type] = v
-
         for item_type, items in itertools.groupby(child_items, key=lambda i: i.context.document):
-            handler = handlers_by_type.get(item_type)
+            handler = IOCScanner.handlers_by_type.get(item_type)
             if not handler:
+                logger.warning(f'Unknown data type: {item_type}')
                 raise UnsupportedOpenIocTerm(f'Unknown data type: {item_type}')
             if handler.validate(items, indicator.operator):
                 valid_items.extend(items)
+        logger.debug(f"Valid items count for indicator {indicator.id}: {len(valid_items)}")
         return valid_items
 
     def _validate_child_indicators(self, indicator: Indicator) -> List[Indicator]:
-        """Recursively validate child indicators."""
-        return [
+        logger.debug(f"Validating child indicators for indicator: {indicator.id}")
+        valid_children = [
             child for child in indicator.items
             if isinstance(child, Indicator) and self.validate_indicator(child)
         ]
+        logger.debug(f"Valid child indicators count for indicator {indicator.id}: {len(valid_children)}")
+        return valid_children
 
-    def _evaluate_logic(self,
-        valid_children: List[Union[IndicatorItem, Indicator]],
-        indicator: Indicator,
-    ) -> bool:
-        """Evaluate the logical operator for an indicator."""
+    def _evaluate_logic(self, valid_children: List[Union[IndicatorItem, Indicator]], indicator: Indicator) -> bool:
+        logger.debug(f"Evaluating logic for indicator: {indicator.id}")
         if indicator.operator is Operator.OR:
-            return bool(valid_children)
+            result = bool(valid_children)
         else:
-            return len(valid_children) == len(indicator.items)
+            result = len(valid_children) == len(indicator.items)
+        logger.debug(f"Logic evaluation result for indicator {indicator.id}: {result}")
+        return result
