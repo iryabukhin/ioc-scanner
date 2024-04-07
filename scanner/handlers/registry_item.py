@@ -2,6 +2,8 @@
 from typing import List, Dict, Optional, Union, Callable, AnyStr, ByteString
 import os
 import winreg as wg
+from pathlib import Path
+from enum import Enum
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
@@ -9,6 +11,13 @@ from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
 from scanner.utils import OSType, from_windows_timestamp
 
 from loguru import logger
+
+class Hive(Enum):
+    HKLM = wg.HKEY_LOCAL_MACHINE
+    HKCU = wg.HKEY_CURRENT_USER
+    HKCR = wg.HKEY_CLASSES_ROOT
+    HKCC = wg.HKEY_CURRENT_CONFIG
+    HKU = wg.HKEY_USERS
 
 
 class RegistryItemHandler(BaseHandler):
@@ -69,43 +78,33 @@ class RegistryItemHandler(BaseHandler):
 
     def _populate_key_info(self, hive: str, key_path: str) -> None:
         try:
-            key = self.HIVES.get(hive)
-            key_handle = wg.OpenKey(key, key_path)
-            registry_values = {}
-
-            full_key_path = self.PATH_DELIMITER.join([hive, key_path])
-
-            try:
-                subkey_count, num_values, last_modified = wg.QueryInfoKey(key_handle)
-                for i in range(num_values):
-                    value_name, raw_data, value_type = wg.EnumValue(key_handle, i)
-                    registry_values[value_name] = {
-                        'Hive': hive,
-                        'Path': full_key_path,
-                        'KeyPath': key_path,
-                        'ValueName': value_name,
-                        'Value': self._get_registry_value(raw_data, value_type),
-                        'Text': raw_data,
-                        'Type': self.TYPE_MAPPING.get(value_type),
-                        'Modified': from_windows_timestamp(last_modified),
-                        'NumValues': num_values,
-                        'NumSubKeys': subkey_count,
-                        'ReportedLengthInBytes': self._get_value_length(raw_data, value_type),
-                    }
-            except OSError as e:
-                logger.error(
-                    f'OSError while enumerating registry values (key path "{key_path}"): {str(e)}'
-                )
-            except Exception as e:
-                logger.error(
-                    f'An unknown error occurred while processing registry values (key path "{key_path}"): {str(e)}'
-                )
-            finally:
-                wg.CloseKey(key_handle)
-
+            key = Hive[hive].value
+            with wg.OpenKey(key, key_path) as key_handle:
+                registry_values = self._enumerate_key_values(key_handle, hive, key_path)
             self._registry_cache[(hive, key_path)] = registry_values
         except FileNotFoundError as e:
-            logger.error(f'Registry key not found: {e}')
+            logger.error(f'Registry key not found: {str(e)}. Key path: {key_path}')
+
+    def _enumerate_key_values(self, key_handle, hive: str, key_path: str) -> Dict:
+        registry_values = {}
+        subkey_count, num_values, last_modified = wg.QueryInfoKey(key_handle)
+        full_key_path = Path(hive) / key_path
+        for i in range(num_values):
+            value_name, raw_data, value_type = wg.EnumValue(key_handle, i)
+            registry_values[value_name] = {
+                'Hive': hive,
+                'Path': str(full_key_path),
+                'KeyPath': key_path,
+                'ValueName': value_name,
+                'Value': self._get_registry_value(raw_data, value_type),
+                'Text': raw_data,
+                'Type': self.TYPE_MAPPING.get(value_type),
+                'Modified': from_windows_timestamp(last_modified),
+                'NumValues': num_values,
+                'NumSubKeys': subkey_count,
+                'ReportedLengthInBytes': self._get_value_length(raw_data, value_type),
+            }
+        return registry_values
 
     def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
         # TOOO: figure out how to handle items that are not supported for the give OS
