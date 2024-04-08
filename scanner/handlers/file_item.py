@@ -15,6 +15,9 @@ from scanner.models import (
 )
 from scanner.utils import OSType
 
+if OSType.is_win():
+    import pefile
+
 from loguru import logger
 
 
@@ -170,7 +173,6 @@ class FileItemHandler(BaseHandler):
 
     def _build_pe_info(self, full_path: str) -> Dict:
         try:
-            import pefile
 
             logger.debug(f'Begin processing PE info for file "{full_path}" ...')
             try:
