@@ -44,8 +44,9 @@ class FileItemHandler(BaseHandler):
 
         self.file_cache = {}
 
-        self._scan_all_drives = config.file_item.scan_all_drives or False
-        self._max_file_size = config.file_item.max_file_size_mb or self.MAX_FILE_SIZE_MB
+        config = self.config.get('file_item', {})
+        self._scan_all_drives = config.get('scan_all_drives', False)
+        self._max_file_size = config.get('max_file_size_mb', self.MAX_FILE_SIZE_MB)
 
     @staticmethod
     def get_supported_terms() -> List[str]:
@@ -90,6 +91,7 @@ class FileItemHandler(BaseHandler):
         )
         if fullpath_item is not None and operator is Operator.AND:
             path = fullpath_item.content.content
+            path = os.path.expandvars(path)
             if path not in self.file_cache:
                 self._populate_cache(path)
         elif not self.file_cache:
@@ -97,9 +99,8 @@ class FileItemHandler(BaseHandler):
 
         valid_items = list()
         for item in items:
-            term = item.context.search
-            value = self.file_cache.get(term)
-            if value is not None and ConditionValidator.validate_condition(item, value):
+            value_to_check = self.file_cache.get(item.get_term())
+            if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
                 valid_items.append(item)
 
         return bool(valid_items) if operator is Operator.OR else len(valid_items) == len(items)

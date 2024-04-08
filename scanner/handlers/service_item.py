@@ -40,9 +40,10 @@ class ServiceItemHandler(BaseHandler):
 
         self._service_cache = {}
 
-        self._scan_executable_signature = config.service_item.scan_executable_signature or False
-        self._scan_dlls = config.service_item.scan_dlls or False
-        self._scan_dll_signatures = config.service_item.scan_dll_signatures or False
+        config = self.config.get('service_item', {})
+        self._scan_executable_signature = config.get('scan_executable_signature') or False
+        self._scan_dlls = config.get('scan_dlls') or False
+        self._scan_dll_signatures = config.get('scan_dll_signatures') or False
 
     @staticmethod
     def get_supported_terms() -> List[str]:
