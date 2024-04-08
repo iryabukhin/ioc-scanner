@@ -6,6 +6,7 @@ from typing import List, Dict, Optional, Union, Callable
 
 from loguru import logger
 
+from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator
 from scanner.utils import OSType
@@ -120,5 +121,7 @@ class ProcessItemHandler(BaseHandler):
             socket.SocketKind.SOCK_RDM: 'RDM',
             socket.SocketKind.SOCK_SEQPACKET: 'SEQPACKET'
         }.get(kind, 'Unknown')  # Default to 'Unknown' if kind is not found
-def init():
-    return ProcessItemHandler()
+
+
+def init(config: ConfigObject):
+    return ProcessItemHandler(config)
