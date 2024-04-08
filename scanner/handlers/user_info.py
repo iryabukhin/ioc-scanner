@@ -16,7 +16,7 @@ class UserItemHandler(BaseHandler):
 
     def __init__(self, config: ConfigObject):
         super().__init__(config)
-        self._user_info_cache: Dict[str, Dict[str, str]] = {}
+        self._user_info_cache = {}
 
     @staticmethod
     def get_supported_terms() -> List[str]:
@@ -93,7 +93,7 @@ class UserItemHandler(BaseHandler):
                 break
         return bool(valid_items)
 
-    def _transform_user_info(self, raw_info: Dict[str]) -> Dict:
+    def _transform_user_info(self, raw_info: Dict) -> Dict:
         return {
             'description': raw_info.get('comment'),
             'disabled': not raw_info.get('flags') & win32netcon.UF_ACCOUNTDISABLE,
