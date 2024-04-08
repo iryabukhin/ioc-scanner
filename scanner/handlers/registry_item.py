@@ -1,9 +1,10 @@
 
 from typing import List, Dict, Optional, Union, Callable, AnyStr, ByteString
+from pathlib import Path
+
 import os
 import winreg as wg
-from pathlib import Path
-from enum import Enum
+from enum import Enum, auto
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
@@ -56,6 +57,7 @@ class RegistryItemHandler(BaseHandler):
 
     def __init__(self,  config: ConfigObject):
         super().__init__(config)
+        self._lazy_evaluation = True
         self._registry_cache = {}
 
     @staticmethod
@@ -107,48 +109,85 @@ class RegistryItemHandler(BaseHandler):
         return registry_values
 
     def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
-        # TOOO: figure out how to handle items that are not supported for the give OS
         if not OSType.is_win():
             return False
 
         # We need to find the KeyPath item that will be used to fetch actual registry branch values
-        key_path_item = next(
-            (i for i in items if i.get_term().endswith('KeyPath')),
-            None
-        )
+        key_path_item = next((i for i in items if i.get_term().endswith('KeyPath')), None)
 
-        if key_path_item is None:
-            logger.info(
-                f'Unable to find KeyPath item among the following items: {", ".join([i.id for i in items])}'
-            )
-            return False
+        if key_path_item:
+            key_path = key_path_item.content.content
+            hive, *key_path_parts = key_path.split(self.PATH_DELIMITER)
 
-        key_path = key_path_item.content.content
-        hive, *key_path_parts = key_path.split(self.PATH_DELIMITER)
+            if hive in self.HIVE_ABBREVIATIONS:
+                hive = self.HIVE_ABBREVIATIONS[hive]
 
-        if hive in self.HIVE_ABBREVIATIONS:
-            hive = self.HIVE_ABBREVIATIONS[hive]
+            if hive not in self.HIVES:
+                logger.error(f'Unsupported hive name in KeyPath item: "{hive}". Item GUID: "{key_path_item.id}"')
+                return False
 
-        if hive not in self.HIVES:
-            logger.error(
-                f'Unsupported hive name in KeyPath item: "{hive}". Item GUID: "{key_path_item.id}"'
-            )
-            return False
+            key_path = self.PATH_DELIMITER.join(key_path_parts)
+            if (hive, key_path) not in self._registry_cache:
+                self._populate_key_info(hive, key_path)
 
-        key_path = self.PATH_DELIMITER.join(key_path_parts)
-        if (hive, key_path) not in self._registry_cache:
-            self._populate_key_info(hive, key_path)
+            key_values = self._registry_cache.get((hive, key_path), {})
+            items = [i for i in items if i.id != key_path_item.id]
+            valid_items = list()
+            for value in key_values:
+                for item in items:
+                    value_to_check = value.get(item.get_term())
+                    if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
+                        if operator == Operator.OR:
+                            return True
+                        else:
+                            valid_items.append(value)
+            return operator == Operator.AND and len(valid_items) == len(items)
+        else:
+            # Perform a full scan if no KeyPath item is provided
+            logger.info("No KeyPath item provided, engaging full registry scan...")
 
-        valid_items = list()
-        key_values = self._registry_cache.get((hive, key_path))
-        for item in items:
-            term = item.context.search.split('/')[-1]
-            for value_name, value in key_values.items():
-                value_to_check = value.get(term)
-                if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
-                    valid_items.append(value)
+            valid_items = list()
 
-        return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
+            for hive_name, hive_key in self.HIVES.items():
+                for value in self._enumerate_path_values(hive_key, hive_name):
+                    for item in items:
+                        term = item.get_term()
+                        value_to_check = value.get(term)
+                        if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
+                            if operator == operator.OR:
+                                return True
+                            else:
+                                valid_items.append(value)
+
+            return operator == operator.AND and len(valid_items) == len(items)
+
+
+    def _enumerate_path_values(self, hive, path =''):
+        try:
+            with wg.OpenKey(hive, path) as key_handle:
+                subkey_count, num_values, _ = wg.QueryInfoKey(key_handle)
+                for i in range(num_values):
+                    value_name, raw_data, value_type = wg.EnumValue(key_handle, i)
+                    full_key_path = Path(hive) / path
+                    processed_value = self._get_registry_value(raw_data, value_type)
+                    yield {
+                        'Hive': hive,
+                        'Path': str(full_key_path),
+                        'KeyPath': path,
+                        'ValueName': value_name,
+                        'Value': processed_value,
+                        'Text': processed_value,
+                        'Type': self.TYPE_MAPPING.get(value_type),
+                        'Modified': None,
+                        'NumValues': num_values,
+                        'NumSubKeys': subkey_count,
+                        'ReportedLengthInBytes': self._get_value_length(raw_data, value_type),
+                    }
+                for j in range(subkey_count):
+                    subkey_name = wg.EnumKey(key_handle, j)
+                    yield from self._enumerate_path_values(hive, path + self.PATH_DELIMITER + subkey_name)
+        except FileNotFoundError as e:
+            logger.error(f'Registry key not found: {str(e)}. Path: {path}')
 
     def _get_registry_value(self, raw_data: Union[str, bytes, int], value_type: int):
         if isinstance(raw_data, bytes) and value_type == wg.REG_BINARY:
