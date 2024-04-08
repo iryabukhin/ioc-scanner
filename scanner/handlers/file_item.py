@@ -168,5 +168,54 @@ class FileItemHandler(BaseHandler):
             return False
         return True
 
+    def _build_pe_info(self, full_path: str) -> Dict:
+        try:
+            import pefile
+
+            logger.debug(f'Begin processing PE info for file "{full_path}" ...')
+            try:
+                exe = pefile.PE(full_path)
+            except pefile.PEFormatError as e:
+                logger.warning(f'Could not process PE file "{full_path}" due to PE format error: {str(e)}')
+                return {}
+
+            info = {
+                'BaseAddress': hex(exe.OPTIONAL_HEADER.ImageBase),
+                'PETimeStamp': datetime.utcfromtimestamp(exe.FILE_HEADER.TimeDateStamp),
+                'Subsystem': exe.OPTIONAL_HEADER.Subsystem,
+                'NumberOfSections': exe.FILE_HEADER.NumberOfSections,
+                'Sections': [{
+                    'Name': section.Name.decode().rstrip('\x00'),
+                    'SizeInBytes': section.SizeOfRawData
+                } for section in exe.sections
+                ],
+                # Additional fields to be added here
+            }
+
+            # Example for handling digital signatures (simplified, real-world usage might require more detailed checks)
+            if hasattr(exe, 'DIRECTORY_ENTRY_SECURITY'):
+                info['DigitalSignature'] = {'SignatureExists': True}
+                # Further processing required to verify signature and extract certificate details
+            else:
+                info['DigitalSignature'] = {'SignatureExists': False}
+
+            # Example for handling exports
+            if hasattr(exe, 'DIRECTORY_ENTRY_EXPORT'):
+                exports = exe.DIRECTORY_ENTRY_EXPORT
+                info['Exports'] = {
+                    'DllName': exports.name.decode(),
+                    'NumberOfFunctions': exports.struct.NumberOfFunctions,
+                    'NumberOfNames': exports.struct.NumberOfNames,
+                    # Additional fields to be added here
+                }
+
+            # Additional PE information extraction logic goes here
+
+            return info
+        except Exception as e:
+            logger.error(f'Error processing PE file {full_path}: {e}')
+            return {}
+
+
 def init(config: ConfigObject):
     return FileItemHandler(config)
