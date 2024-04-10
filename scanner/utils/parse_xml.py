@@ -1,5 +1,4 @@
 
-
 from typing import List, Dict, Union, Optional
 from collections import defaultdict
 import xml.dom
@@ -57,8 +56,8 @@ def parse_indicator_item(item_node) -> IndicatorItem:
         condition=parse_condition(item_node.getAttribute('condition')),
         context=parse_context(item_node.getElementsByTagName('Context')[0]),
         content=parse_content(item_node.getElementsByTagName('Content')[0]),
-        negate=item_node.getAttribute('negate'),
-        preserve_case=item_node.getAttribute('preserve-case')
+        negate=_parse_boolean(item_node.getAttribute('negate')),
+        preserve_case=_parse_boolean(item_node.getAttribute('preserve-case')),
     )
 
 
@@ -80,3 +79,11 @@ def parse_condition(value: str) -> IndicatorItemCondition:
         return IndicatorItemCondition(value)
     except ValueError:
         raise OpenIOCSemanticError('Unknown condition type: ' + value)
+
+def _parse_boolean(value: str) -> bool:
+    if value.lower() == 'true':
+        return True
+    elif value.lower() == 'false':
+        return False
+    else:
+        raise XmlParseError(f'Unknown boolean value: {value}')
