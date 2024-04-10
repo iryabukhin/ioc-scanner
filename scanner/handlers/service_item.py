@@ -38,6 +38,7 @@ class ServiceItemHandler(BaseHandler):
     def __init__(self, config: ConfigObject):
         super().__init__(config)
 
+        self._lazy_evaluation = self.config.get('lazy_evaluation', False)
         self._service_cache = {}
 
         config = self.config.get('service_item', {})
@@ -74,40 +75,47 @@ class ServiceItemHandler(BaseHandler):
 
     def _populate_cache(self) -> None:
         for service in psutil.win_service_iter():
-            info = {
-                'name': service.name(),
-                'descriptiveName': service.display_name(),
-                'description': service.description(),
-                'path': service.binpath(),
-                'pid': service.pid(),
-                'arguments': self._get_service_args(service),
-                'status': service.status(),
-                'mode': service.start_type(),
-                'startedAs': service.username(),
-                'serviceDLL': list(),
-                'serviceDLLmd5sum': list(),
-                'serviceDLLsha1sum': list(),
-                'serviceDLLsha256sum': list(),
-            }
+            try:
+                info = {
+                    'name': service.name(),
+                    'descriptiveName': service.display_name(),
+                    'description': service.description(),
+                    'path': service.binpath().split(' ')[0] if service.binpath() else None,
+                    'pid': service.pid(),
+                    'arguments': self._get_service_args(service),
+                    'status': service.status(),
+                    'mode': service.start_type(),
+                    'startedAs': service.username(),
+                    'serviceDLL': list(),
+                    'serviceDLLmd5sum': list(),
+                    'serviceDLLsha1sum': list(),
+                    'serviceDLLsha256sum': list(),
+                }
 
-            if service.binpath():
-                info.update(self._get_service_executable_hash(service.binpath()))
+                if info['path'] and self._scan_executable_signature:
+                    info.update(self._get_service_executable_hash(info['path']))
 
-            # no need to fetch this info for services that are stared with their own executable file
-            if self._scan_dlls and self._is_service_shared(service) and service.pid():
-                for dll_info in self._get_dll_info(service):
-                    for k, v in dll_info.items():
-                        if k not in info:
-                            info[k] = list()
-                        info[k].append(v)
+                # no need to fetch this info for services that are stared with their own executable file
+                if self._scan_dlls and self._is_service_shared(info['path']) and service.pid():
+                    for dll_info in self._get_dll_info(service):
+                        for k, v in dll_info.items():
+                            if k not in info:
+                                info[k] = list()
+                            info[k].append(v)
 
-            self._service_cache[service.name()] = info
+                self._service_cache[service.name()] = info
+            except (OSError, PermissionError, psutil.AccessDenied) as e:
+                logger.error(f'An error prevented fetching info about {service.name()} process: {str(e)}')
+                continue
 
-    def _get_service_args(self, service):
-        if not service.pid():
-            return ''
-        cmdline = psutil.Process(pid=service.pid()).cmdline()
-        return cmdline[1:] if len(cmdline) > 1 else ''
+    def _get_service_args(self, service) -> Optional[str]:
+        binpath = service.binpath()
+        if not binpath:
+            return None
+        parts = binpath.split(' ')
+        if len(parts) < 2:
+            return None
+        return ' '.join(parts[1:])
 
     def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
         if not OSType.is_win():
@@ -117,21 +125,19 @@ class ServiceItemHandler(BaseHandler):
         if not self._service_cache:
             self._populate_cache()
 
-        valid_items = []
-        for item in items:
-            if self._find_matched_services(item):
-                valid_items.append(item)
+        valid_items = set()
+        for name, service_data in self._get_service_info().items():
+            for item in items:
+                term = item.get_term()
+                value = service_data.get(term)
+                if value is not None and ConditionValidator.validate_condition(item, value):
+                    if operator == Operator.OR and self._lazy_evaluation:
+                        return True
+                    else:
+                        valid_items.add(item)
 
-        return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
+        return  operator == Operator.AND and len(valid_items) == len(items)
 
-    def _find_matched_services(self, item: IndicatorItem) -> List[IndicatorItem]:
-        result = list()
-        term = item.get_term()
-        for service in self._service_cache:
-            value_to_check = service.get(term)
-            if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
-                result.append(service)
-        return result
 
     def _get_exec_dll_modules(self, pid: int) -> List[Dict[str, str]]:
         logger.info(f'[BEGIN] Fetching loaded DLL info for {pid=}')
@@ -231,11 +237,11 @@ class ServiceItemHandler(BaseHandler):
         finally:
             return []
 
-    def _is_service_shared(self, srvc) -> bool:
+    def _is_service_shared(self, srvc_binpath: str) -> bool:
         system_root = os.getenv('SystemRoot')
-        svchost_path = os.path.join(system_root,' system32', 'svchost.exe')
+        svchost_path = os.path.join(system_root,'system32', 'svchost.exe')
         # we need to call lower() because system32 dir name is sometimes uppercased
-        return srvc.binpath().lower().startswith(svchost_path.lower())
+        return srvc_binpath.lower().startswith(svchost_path.lower())
 
     def _get_service_executable_hash(self, binary_path: str) ->  Dict[str, str]:
         result = {
@@ -256,6 +262,10 @@ class ServiceItemHandler(BaseHandler):
         finally:
             return result
 
+    def _get_service_info(self) -> Dict[str, Dict]:
+        if not self._service_cache:
+            self._populate_cache()
+        return self._service_cache
 
 
 def init(config: ConfigObject):
