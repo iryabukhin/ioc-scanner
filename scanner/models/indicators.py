@@ -1,7 +1,8 @@
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import List, Union, Dict, ClassVar
+from typing import List, Union, Dict, ClassVar, Optional
+
 
 class IndicatorItemOperator(Enum):
     OR = 'OR'
@@ -56,4 +57,5 @@ class Indicator:
     operator: IndicatorItemOperator
     level: int
     items: List[Union['Indicator', IndicatorItem]]
+    parent_id: Optional[str] = field(default=None)
 

@@ -17,6 +17,7 @@ def parse(ioc_document_content: str) -> List[Indicator]:
         # TODO: add logging output
         raise XmlParseError(f'Unable to parse OpenIoC document content: {e}')
 
+    ioc_id = dom.childNodes[0].getAttribute('id') if dom.childNodes[0].hasAttribute('id') else None
     criteria_nodes = dom.getElementsByTagName('criteria')
     if criteria_nodes.length == 0:
         raise scanner.exceptions.OpenIOCSemanticError(
@@ -25,13 +26,14 @@ def parse(ioc_document_content: str) -> List[Indicator]:
 
     root_node = criteria_nodes[0]
     return [
-        parse_indicator(n) for n in root_node.childNodes
+        parse_indicator(n, 1, ioc_id) for n in root_node.childNodes
         if n.nodeType == xml.dom.Node.ELEMENT_NODE and n.tagName == 'Indicator'
     ]
 
 
-def parse_indicator(indicator_node, level: int = 1):
+def parse_indicator(indicator_node, level: int = 1, parent_id: str = None):
     items = []
+    current_indicator_id = indicator_node.getAttribute('id')
     for child in indicator_node.childNodes:
         if child.nodeName == 'IndicatorItem':
             items.append(
@@ -39,16 +41,16 @@ def parse_indicator(indicator_node, level: int = 1):
             )
         elif child.nodeName == 'Indicator':
             items.append(
-                parse_indicator(child, level + 1)
+                parse_indicator(child, level + 1, current_indicator_id)  # Pass current indicator's ID as parent_id
             )
 
     return Indicator(
-        id=indicator_node.getAttribute('id'),
+        id=current_indicator_id,
         operator=IndicatorItemOperator(indicator_node.getAttribute('operator')),
         level=level,
         items=items,
+        parent_id=parent_id
     )
-
 
 def parse_indicator_item(item_node) -> IndicatorItem:
     return IndicatorItem(
