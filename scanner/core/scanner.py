@@ -1,6 +1,7 @@
 import importlib
 import itertools
 import os
+from operator import attrgetter
 from typing import List, Dict, Union, Optional
 
 from loguru import logger
@@ -89,7 +90,8 @@ class IOCScanner:
             logger.debug(f'No child items found for indicator {indicator.id}...')
             return valid_items
 
-        for item_type, items in itertools.groupby(child_items, key=lambda i: i.context.document):
+        for item_type, items in itertools.groupby(child_items, key=attrgetter('context.document')):
+            items = [i for i in items]
             handler = IOCScanner.handlers_by_type.get(item_type)
             if not handler:
                 logger.warning(f'Unknown data type: {item_type}')
