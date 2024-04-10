@@ -17,18 +17,19 @@ class IndicatorItemCondition(Enum):
     LESS_THAN = 'less-than'
 
 
-@dataclass
+@dataclass(frozen=True)
 class IndicatorItemContext:
     document: str
     search: str
     type: str
 
-@dataclass
+@dataclass(frozen=True)
 class IndicatorItemContent:
     type: str
     content: str
 
-@dataclass
+
+@dataclass(frozen=True)
 class IndicatorItem:
 
     TERM_SEPARATOR: ClassVar[str] = '/'
@@ -49,7 +50,7 @@ class IndicatorItem:
         terms = [t for t in self.get_terms() if t != self.context.document]
         return len(terms) > 1
 
-@dataclass
+@dataclass(frozen=True)
 class Indicator:
     id: str
     operator: IndicatorItemOperator
