@@ -15,6 +15,17 @@ from scanner.utils.hash import calculate_hash
 
 class ProcessItemHandler(BaseHandler):
 
+    def __init__(self, config: ConfigObject):
+        super().__init__(config)
+
+        config = config.get('process_item', {})
+
+        self._parse_handles = config.get('parse_handles', False)
+        self._parse_sockets = config.get('parse_sockets', False)
+        self._ignore_permission_errors = config.get('ignore_permission_errors', True)
+
+        self._process_info = None
+
     @staticmethod
     def get_supported_terms() -> List[str]:
         return [
@@ -54,21 +65,29 @@ class ProcessItemHandler(BaseHandler):
     def _populate_process_info(self) -> None:
         self._process_info = {}
 
-        def add_to_data(data, items):
+        def add_to_data(data, path, items):
             for item in items:
                 for key, value in item.items():
-                    key = f'ProcessItem/HandleList/Handle/{key}'
+                    key = f'ProcessItem/{path}/{key}'
                     data.setdefault(key, []).append(value)
 
         for proc in psutil.process_iter():
-            data = self._fetch_basic_process_data(proc)
-            if OSType.is_linux():
-                handles = list(self._get_process_handles(proc))
-                sockets = list(self._get_process_sockets(proc))
-                add_to_data(data, handles)
-                add_to_data(data, sockets)
-
-            self._process_info[str(proc.pid)] = data
+            if self._should_skip_process(proc):
+                continue
+            try:
+                data = self._fetch_basic_process_data(proc)
+                if OSType.is_linux():
+                    if self._parse_handles:
+                        add_to_data(data, 'HandleList/Handle', list(self._get_process_handles(proc)))
+                    if self._parse_sockets:
+                        add_to_data(data, 'HandleList/Handle', list(self._get_process_sockets(proc)))
+                self._process_info[str(proc.pid)] = data
+            except (PermissionError, psutil.AccessDenied) as e:
+                logger.error(f'Error occurred while retrieving process info for process: {str(e)}')
+                if self._ignore_permission_errors:
+                    continue
+                else:
+                    raise e
 
     def _fetch_basic_process_data(self, proc) -> Dict:
         return {
@@ -121,6 +140,9 @@ class ProcessItemHandler(BaseHandler):
             socket.SocketKind.SOCK_RDM: 'RDM',
             socket.SocketKind.SOCK_SEQPACKET: 'SEQPACKET'
         }.get(kind, 'Unknown')  # Default to 'Unknown' if kind is not found
+
+    def _should_skip_process(self, proc) -> bool:
+        return proc.pid == os.getpid() or proc.pid == 0
 
 
 def init(config: ConfigObject):
