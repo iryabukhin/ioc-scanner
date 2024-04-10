@@ -1,7 +1,14 @@
 
+
+lazy_evaluation: False
+
 file_item:
   max_file_size_mb: 64
 process_item:
   parse_sections: false
   parse_sockets: false
   ignore_permission_errors: true
+service_item:
+  scan_dlls: True
+  scan_executable_signature: True
+  scan_dll_signatures: True

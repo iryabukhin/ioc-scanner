@@ -8,7 +8,7 @@ from loguru import logger
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
-from scanner.models import IndicatorItem, IndicatorItemOperator
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
 from scanner.utils import OSType
 from scanner.utils.hash import calculate_hash
 
@@ -18,6 +18,7 @@ class ProcessItemHandler(BaseHandler):
     def __init__(self, config: ConfigObject):
         super().__init__(config)
 
+        self._lazy_evaluation = config.get('lazy_evaluation', False)
         config = config.get('process_item', {})
 
         self._parse_handles = config.get('parse_handles', False)
@@ -48,19 +49,22 @@ class ProcessItemHandler(BaseHandler):
             'ProcessItem/HandleList/Handle/Sha256sum',
         ]
 
-    def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
-        valid_items = []
-        for item in items:
-            term = item.context.search
-            value = self._get_value(term)
-            if value is not None and ConditionValidator.validate_condition(item, value):
-                valid_items.append(item)
-        return bool(valid_items) if operator is IndicatorItemOperator.OR else len(valid_items) == len(items)
+    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+        valid_items = set()
+        for pid, process_data in self._get_process_info().items():
+            for item in items:
+                term = item.get_term()
+                value = process_data.get(term)
+                if value is not None and ConditionValidator.validate_condition(item, value):
+                    valid_items.add(item)
+                    if operator == Operator.OR and self._lazy_evaluation:
+                        return True
+        return bool(valid_items) if operator == Operator.OR else len(valid_items) == len(items)
 
-    def _get_value(self, term: str) -> Optional[Union[str, int]]:
+    def _get_process_info(self) -> Dict[str, Dict]:
         if not self._process_info:
             self._populate_process_info()
-        return self._process_info.get(term)
+        return self._process_info
 
     def _populate_process_info(self) -> None:
         self._process_info = {}
