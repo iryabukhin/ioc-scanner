@@ -6,6 +6,19 @@ from scanner.models import IndicatorItem, IndicatorItemCondition as Condition
 
 from loguru import logger
 
+
+HASH_STRING_TYPES = ['md5','sha1','sha256','sha512']
+IP_STRING_TYPES = ['IP', 'IPV4', 'IPV6']
+
+def _convert_value_type(type: str):
+    if type.lower() in HASH_STRING_TYPES:
+        return 'string'
+    elif type.lower() in IP_STRING_TYPES:
+        return 'string'
+    else:
+        return type
+
+
 class ConditionValidator:
     @staticmethod
     def validate_condition(
@@ -13,7 +26,7 @@ class ConditionValidator:
         value_to_check: Union[str, int, float, dt, List]
     ):
         condition = item.condition
-        content_type = item.content.type
+        content_type = _convert_value_type(item.content.type)
         content_value = item.content.content
 
         result = False
