@@ -57,8 +57,8 @@ def main():
             matched_iocs = IOCScanner(config).process(indicators)
             if matched_iocs:
                 logger.info('General result: Valid')
-                valid_ids = [indicator.id for indicator in matched_iocs if indicator.valid]
-                logger.info('Valid indicators IDs: {}', ', '.join(valid_ids))
+                valid_ids = [i.id for i in indicators if i.id in matched_iocs]
+                logger.info('Valid indicators IDs: {}', ', ' . join(valid_ids))
             else:
                 logger.warning('General result: Invalid')
     except Exception as e:
