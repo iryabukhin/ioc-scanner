@@ -58,7 +58,7 @@ class RegistryItemHandler(BaseHandler):
 
     def __init__(self,  config: ConfigObject):
         super().__init__(config)
-        self._lazy_evaluation = True
+        self._lazy_evaluation = config.get('lazy_evaluation', False)
         self._registry_cache = {}
 
     @staticmethod
