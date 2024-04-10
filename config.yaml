@@ -1,0 +1,7 @@
+
+file_item:
+  max_file_size_mb: 64
+process_item:
+  parse_sections: false
+  parse_sockets: false
+  ignore_permission_errors: true
