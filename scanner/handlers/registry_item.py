@@ -23,7 +23,7 @@ class Hive(Enum):
 
 class RegistryItemHandler(BaseHandler):
 
-    PATH_DELIMITER = r'\\'
+    PATH_DELIMITER = '\\'
 
     HIVE_ABBREVIATIONS = {
         'HKLM': 'HKEY_LOCAL_MACHINE',
@@ -37,7 +37,8 @@ class RegistryItemHandler(BaseHandler):
         'HKEY_LOCAL_MACHINE': wg.HKEY_LOCAL_MACHINE,
         'HKEY_CURRENT_CONFIG': wg.HKEY_CURRENT_CONFIG,
         'HKEY_CURRENT_USER': wg.HKEY_CURRENT_USER,
-        'HKEY_USERS': wg.HKEY_USERS
+        'HKEY_USERS': wg.HKEY_USERS,
+        'HKEY_CLASSES_ROOT': wg.HKEY_CLASSES_ROOT
     }
 
     TYPE_MAPPING = {
@@ -80,7 +81,10 @@ class RegistryItemHandler(BaseHandler):
 
     def _populate_key_info(self, hive: str, key_path: str) -> None:
         try:
-            key = Hive[hive].value
+            key = self.HIVES.get(hive)
+            if hive is None:
+                logger.error(f'Unsupported hive name provided: "{hive}". Path: "{key_path}"')
+                return
             with wg.OpenKey(key, key_path) as key_handle:
                 registry_values = self._enumerate_key_values(key_handle, hive, key_path)
             self._registry_cache[(hive, key_path)] = registry_values
@@ -90,13 +94,13 @@ class RegistryItemHandler(BaseHandler):
     def _enumerate_key_values(self, key_handle, hive: str, key_path: str) -> Dict:
         registry_values = {}
         subkey_count, num_values, last_modified = wg.QueryInfoKey(key_handle)
-        full_key_path = Path(hive) / key_path
+        full_key_path = self.PATH_DELIMITER.join([hive, key_path])
         for i in range(num_values):
             value_name, raw_data, value_type = wg.EnumValue(key_handle, i)
             registry_values[value_name] = {
                 'Hive': hive,
-                'Path': str(full_key_path),
-                'KeyPath': key_path,
+                'Path': key_path,
+                'KeyPath': full_key_path,
                 'ValueName': value_name,
                 'Value': self._get_registry_value(raw_data, value_type),
                 'Text': raw_data,
@@ -131,16 +135,15 @@ class RegistryItemHandler(BaseHandler):
                 self._populate_key_info(hive, key_path)
 
             key_values = self._registry_cache.get((hive, key_path), {})
-            items = [i for i in items if i.id != key_path_item.id]
-            valid_items = list()
-            for value in key_values:
+            valid_items = set()
+            for value_name, value_data in sorted(key_values.items()):
                 for item in items:
-                    value_to_check = value.get(item.get_term())
+                    value_to_check = value_data.get(item.get_term())
                     if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
                         if operator == Operator.OR:
                             return True
                         else:
-                            valid_items.append(value)
+                            valid_items.add(item)
             return operator == Operator.AND and len(valid_items) == len(items)
         else:
             # Perform a full scan if no KeyPath item is provided
@@ -204,6 +207,12 @@ class RegistryItemHandler(BaseHandler):
             return len(raw_data.encode('utf-16le'))
         else:
             return (raw_data.bit_length() + 7) // 8
+
+    def _replace_abbreviated_hive_name(self, path: str) -> str:
+        for name in self.HIVE_ABBREVIATIONS:
+            if path.startswith(name):
+                return path.replace(name, self.HIVE_ABBREVIATIONS[name])
+        return path
 
 
 def init(config: ConfigObject):
