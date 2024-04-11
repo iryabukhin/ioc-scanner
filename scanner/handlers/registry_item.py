@@ -13,13 +13,6 @@ from scanner.utils import OSType, from_windows_timestamp
 
 from loguru import logger
 
-class Hive(Enum):
-    HKLM = wg.HKEY_LOCAL_MACHINE
-    HKCU = wg.HKEY_CURRENT_USER
-    HKCR = wg.HKEY_CLASSES_ROOT
-    HKCC = wg.HKEY_CURRENT_CONFIG
-    HKU = wg.HKEY_USERS
-
 
 class RegistryItemHandler(BaseHandler):
 
@@ -58,6 +51,7 @@ class RegistryItemHandler(BaseHandler):
 
     def __init__(self,  config: ConfigObject):
         super().__init__(config)
+        self.HIVE_NAMES = {v: k for k, v in  self.HIVES.items()}
         self._lazy_evaluation = config.get('lazy_evaluation', False)
         self._registry_cache = {}
 
@@ -149,34 +143,42 @@ class RegistryItemHandler(BaseHandler):
             # Perform a full scan if no KeyPath item is provided
             logger.info("No KeyPath item provided, engaging full registry scan...")
 
-            valid_items = list()
+            specified_hives = [i.content.content for i in items if i.get_term() == 'Hive']
+            specified_hives = [self.HIVE_ABBREVIATIONS.get(hive, hive) for hive in specified_hives]
+            hives_to_scan = {name: key for name, key in self.HIVES.items() if
+                             name in specified_hives or not specified_hives}
 
-            for hive_name, hive_key in self.HIVES.items():
-                for value in self._enumerate_path_values(hive_key, hive_name):
+            valid_items = set()
+
+            for hive_name, hive_key in hives_to_scan.items():
+                for value in self._enumerate_path_values(hive_key):
                     for item in items:
+                        if item in valid_items:
+                            continue
                         term = item.get_term()
                         value_to_check = value.get(term)
                         if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
                             if operator == operator.OR:
                                 return True
                             else:
-                                valid_items.append(value)
+                                valid_items.add(item)
 
             return operator == operator.AND and len(valid_items) == len(items)
 
 
-    def _enumerate_path_values(self, hive, path =''):
+    def _enumerate_path_values(self, hive_key: int, path: str = ''):
         try:
-            with wg.OpenKey(hive, path) as key_handle:
+            with wg.OpenKey(hive_key, path) as key_handle:
                 subkey_count, num_values, _ = wg.QueryInfoKey(key_handle)
                 for i in range(num_values):
                     value_name, raw_data, value_type = wg.EnumValue(key_handle, i)
-                    full_key_path = Path(hive) / path
                     processed_value = self._get_registry_value(raw_data, value_type)
+                    hive_name = self.HIVE_NAMES.get(hive_key)
+                    full_path = (hive_name + self.PATH_DELIMITER + path) if path else hive_name
                     yield {
-                        'Hive': hive,
-                        'Path': str(full_key_path),
-                        'KeyPath': path,
+                        'Hive': hive_name,
+                        'Path': path,
+                        'KeyPath': full_path,
                         'ValueName': value_name,
                         'Value': processed_value,
                         'Text': processed_value,
@@ -188,9 +190,12 @@ class RegistryItemHandler(BaseHandler):
                     }
                 for j in range(subkey_count):
                     subkey_name = wg.EnumKey(key_handle, j)
-                    yield from self._enumerate_path_values(hive, path + self.PATH_DELIMITER + subkey_name)
+                    new_path = subkey_name if not path else path + self.PATH_DELIMITER + subkey_name
+                    yield from self._enumerate_path_values(hive_key, new_path)
         except FileNotFoundError as e:
             logger.error(f'Registry key not found: {str(e)}. Path: {path}')
+        except PermissionError as e:
+            logger.error(f'Unable to access registry key due to a permission error: {str(e)}. Path: {path}')
 
     def _get_registry_value(self, raw_data: Union[str, bytes, int], value_type: int):
         if isinstance(raw_data, bytes) and value_type == wg.REG_BINARY:
@@ -200,8 +205,12 @@ class RegistryItemHandler(BaseHandler):
         else:
             return str(raw_data)
 
-    def _get_value_length(self, raw_data: Union[str, bytes, int], value_type: int):
-        if isinstance(raw_data, bytes):
+    def _get_value_length(self, raw_data, value_type: int):
+        if value_type == wg.REG_MULTI_SZ and isinstance(raw_data, list):
+            return sum(map(lambda v: self._get_value_length(v, wg.REG_SZ), raw_data))
+        if value_type == wg.REG_NONE or raw_data is None:
+            return 0
+        elif isinstance(raw_data, bytes):
             return len(raw_data)
         elif isinstance(raw_data, str):
             return len(raw_data.encode('utf-16le'))
