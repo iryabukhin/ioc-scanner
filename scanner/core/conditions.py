@@ -1,3 +1,4 @@
+import os.path
 import re
 from typing import Union, List, Dict, Optional
 from datetime import datetime as dt
@@ -34,6 +35,9 @@ class ConditionValidator:
         if not item.preserve_case and content_type == 'string':
             value_to_check = value_to_check.lower()
             content_value = content_value.lower()
+
+        if item.get_term() in ['FilePath', 'FullPath']:
+            value_to_check = os.path.expandvars(value_to_check)
 
         if content_type == 'date':
             for var in ['value_to_check', 'content_value']:
