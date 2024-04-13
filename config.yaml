@@ -4,6 +4,7 @@ lazy_evaluation: False
 
 file_item:
   max_file_size_mb: 64
+  scan_file_hash: False
 process_item:
   parse_sections: false
   parse_sockets: false

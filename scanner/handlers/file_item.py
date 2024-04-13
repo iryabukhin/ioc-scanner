@@ -45,11 +45,14 @@ class FileItemHandler(BaseHandler):
     def __init__(self, config: ConfigObject):
         super().__init__(config)
 
-        self.file_cache = {}
+        self._lazy_evaluation = config.get('lazy_evaluation', True)
 
         config = self.config.get('file_item', {})
+        self._scan_file_hash = config.get('scan_file_hash', True)
         self._scan_all_drives = config.get('scan_all_drives', False)
         self._max_file_size = config.get('max_file_size_mb', self.MAX_FILE_SIZE_MB)
+
+        self.file_cache = dict()
 
     @staticmethod
     def get_supported_terms() -> List[str]:
@@ -70,7 +73,8 @@ class FileItemHandler(BaseHandler):
     def _build_file_info(self, full_path: str) -> Dict:
         result = {
             'FileName': os.path.basename(full_path),
-            'FilePath': os.path.abspath(full_path),
+            'FullPath': os.path.abspath(full_path),
+            'FilePath': full_path,
             'FileExtension': os.path.splitext(full_path)[1],
             'SizeInBytes': os.path.getsize(full_path),
             'Created': self._get_creation_time(full_path),
@@ -78,20 +82,22 @@ class FileItemHandler(BaseHandler):
             'Accessed': datetime.fromtimestamp(os.path.getatime(full_path), timezone.utc),
         }
 
+        if self._scan_file_hash:
+            result.update(self._calculate_file_hashes(full_path))
+
+        return result
+
+    def _calculate_file_hashes(self, full_path: str) -> Dict[str, str]:
         hash_methods = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
         hashes = {h.name: h for h in hash_methods}
         with open(full_path, 'rb') as f:
             for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
                 for hash_obj in hashes.values():
                     hash_obj.update(chunk)
-        result.update({f'{h.name.title()}sum': h.hexdigest() for h in hashes.values()})
-        return result
-
+        return {f'{h.name.title()}sum': h.hexdigest() for h in hashes.values()}
     def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
-        fullpath_item = next(
-            (i for i in items if i.context.search == 'FileItem/FullPath'),
-            None
-        )
+        self._update_scan_file_hash_preference(items)
+        fullpath_item = next((i for i in items if i.context.search == 'FileItem/FullPath'), None)
         if fullpath_item is not None and operator is Operator.AND:
             path = fullpath_item.content.content
             path = os.path.expandvars(path)
@@ -100,11 +106,14 @@ class FileItemHandler(BaseHandler):
         elif not self.file_cache:
             self._populate_cache()
 
-        valid_items = list()
+        valid_items = set()
         for item in items:
-            value_to_check = self.file_cache.get(item.get_term())
-            if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
-                valid_items.append(item)
+            for fullpath, file_data in self.file_cache.items():
+                value_to_check = file_data.get(item.get_term())
+                if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
+                    valid_items.add(item)
+                    if operator == Operator.OR and self._lazy_evaluation:
+                        return True
 
         return bool(valid_items) if operator is Operator.OR else len(valid_items) == len(items)
 
@@ -120,7 +129,7 @@ class FileItemHandler(BaseHandler):
                 root = self.LINUX_DEFAULT_ROOT_PATH
 
         self.file_cache = {
-            i['FileItem/FilePath'] for i in self._recursive_scan(root)
+            i['FullPath']: i for i in self._recursive_scan(root)
         }
 
     def _recursive_scan(self, root: str) -> List[Dict]:
@@ -136,6 +145,7 @@ class FileItemHandler(BaseHandler):
                 fpath = os.path.join(rootdir, filename)
                 if self._should_process_file(fpath):
                     try:
+                        logger.debug(f'Processing file {fpath}')
                         yield self._build_file_info(fpath)
                     except PermissionError as e:
                         logger.warning(f'Could not scan file "{fpath}" due to permission error: {str(e)}')
@@ -170,6 +180,11 @@ class FileItemHandler(BaseHandler):
             logger.info(f'Skipping file "{fpath}" because its size exceeds {self._max_file_size} MB')
             return False
         return True
+
+    def _update_scan_file_hash_preference(self, items: List[IndicatorItem]) -> None:
+        hash_terms = {'Md5sum', 'Sha1sum', 'Sha256sum'}
+        # Check if any item requires hash calculation
+        self._scan_file_hash = any(item.get_term() in hash_terms for item in items)
 
     def _build_pe_info(self, full_path: str) -> Dict:
         try:
