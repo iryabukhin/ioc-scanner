@@ -22,14 +22,12 @@ class IOCScanner:
     lazy_evaluation = False
     scanned_iocs = {}
     handlers: Dict[str, BaseHandler] = {}
-    handlers_by_type: Dict[str, BaseHandler] = {}  # optimized handler lookup
 
     def __init__(self, config: ConfigObject):
         self.config = config
-        logger.info('Initializing IOCScanner...')
+        self.ignore_unsupported_terms = self.config.get('ignore_unsupported_terms', True)
         if not IOCScanner.handlers:
             self.__init_handlers()
-            self.__organize_handlers_by_type()
 
     def __init_handlers(self):
         logger.info('Initializing handlers...')
@@ -56,10 +54,6 @@ class IOCScanner:
                 except Exception as e:
                     logger.error(f'Error loading handler from module {fname}: {e}')
 
-    def __organize_handlers_by_type(self):
-        for term, handler in IOCScanner.handlers.items():
-            item_type = term.split('/')[0]
-            IOCScanner.handlers_by_type[item_type] = handler
 
     def process(self, indicators: List[Indicator]):
         logger.info(f'Processing {len(indicators)} indicators...')
@@ -84,20 +78,30 @@ class IOCScanner:
 
     def _validate_indicator_items(self, indicator: Indicator) -> List[IndicatorItem]:
         logger.debug(f'Validating indicator items for indicator: {indicator.id}')
-        valid_items = []
         child_items = [i for i in indicator.items if isinstance(i, IndicatorItem)]
-        if len(child_items) == 0:
+        if not child_items:
             logger.debug(f'No child items found for indicator {indicator.id}...')
-            return valid_items
+            return []
 
-        for item_type, items in itertools.groupby(child_items, key=attrgetter('context.document')):
-            items = [i for i in items]
-            handler = IOCScanner.handlers_by_type.get(item_type)
-            if not handler:
-                logger.warning(f'Unknown data type: {item_type}')
-                raise UnsupportedOpenIocTerm(f'Unknown data type: {item_type}')
-            if handler.validate(items, indicator.operator):
-                valid_items.extend(items)
+        valid_items = []
+        child_items.sort(key=attrgetter('context.document'))
+        for item_type, grouped_items in itertools.groupby(child_items, key=attrgetter('context.document')):
+            grouped_items = list(grouped_items)
+            unsupported_items = {i.id: i for i in grouped_items if i.context.search not in self.handlers.keys()}
+            supported_items = {i.id: i for i in grouped_items if i.id not in unsupported_items.keys()}
+            if len(unsupported_items) > 0 and self.ignore_unsupported_terms:
+                logger.warning(
+                    f'Ignoring unsupported items found in indicator {indicator.id}: {unsupported_items.values()}'
+                )
+                valid_items.extend(unsupported_items)
+            else:
+                raise UnsupportedOpenIocTerm(
+                    f'Unsupported items found for indicator {indicator.id}: {unsupported_items.values()}'
+                )
+            handler = self.handlers.get(item_type, None)
+            if handler.validate(supported_items.values(), indicator.operator):
+                valid_items.extend(supported_items.values())
+
         logger.debug(f'Valid items count for indicator {indicator.id}: {len(valid_items)} out of {len(child_items)}')
         return valid_items
 
