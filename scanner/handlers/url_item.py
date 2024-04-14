@@ -60,7 +60,7 @@ class UrlItemHandler(BaseHandler):
                 for entry in outputs.histories:
                     last_visit, url, title = entry
                     self._cache[url] = {
-                        'BrowserName': browser_class.__name__,
+                        'BrowserName': browser.name,
                         'URL': url,
                         'PageTitle': title,
                         'HostName': urlparse(url).hostname,
@@ -70,8 +70,11 @@ class UrlItemHandler(BaseHandler):
                         'LastVisitDateLocal': last_visit.astimezone(tz=None),
                     }
             except AssertionError as e:
-                logger.error(f"Exception occurred while populating cache for {browser_class}: {str(e)}")
+                logger.debug(f"Browser is not installed, details: {str(e)}")
                 continue
+            except PermissionError as e:
+                name = browser.name if browser is not None else browser_class.__class__.__name__
+                logger.debug(f'Could not fetch history for {name} browser: {str(e)}')
 
 
 
