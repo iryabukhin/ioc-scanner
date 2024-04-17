@@ -1,6 +1,6 @@
 
 import abc
-from typing import  List, Dict, Union, Optional
+from typing import Union, Optional
 
 from scanner.config import ConfigObject
 from scanner.models import IndicatorItem, IndicatorItemOperator
@@ -13,10 +13,10 @@ class BaseHandler:
 
     @staticmethod
     @abc.abstractmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return []
 
 
     @abc.abstractmethod
-    def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool:
         raise NotImplementedError

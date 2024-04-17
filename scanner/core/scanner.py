@@ -2,7 +2,6 @@ import importlib
 import itertools
 import os
 from operator import attrgetter
-from typing import List, Dict, Union, Optional
 
 from loguru import logger
 
@@ -14,14 +13,12 @@ from scanner.models import (
     Indicator,
     IndicatorItem,
     IndicatorItemOperator as Operator,
-    IndicatorItemCondition,
-    IndicatorItemContent
 )
 
 class IOCScanner:
     lazy_evaluation = False
     scanned_iocs = {}
-    handlers: Dict[str, BaseHandler] = {}
+    handlers: dict[str, BaseHandler] = {}
 
     def __init__(self, config: ConfigObject):
         self.config = config
@@ -55,7 +52,7 @@ class IOCScanner:
                     logger.error(f'Error loading handler from module {fname}: {e}')
 
 
-    def process(self, indicators: List[Indicator]):
+    def process(self, indicators: list[Indicator]):
         logger.info(f'Processing {len(indicators)} indicators...')
         processed_ids = [i.id for i in indicators if self.validate_indicator(i)]
         logger.info(f'Processed indicators. Valid indicators: {len(processed_ids)}')
@@ -76,7 +73,7 @@ class IOCScanner:
         logger.debug(f'Indicator {indicator.id} validation result: {result}')
         return result
 
-    def _validate_indicator_items(self, indicator: Indicator) -> List[IndicatorItem]:
+    def _validate_indicator_items(self, indicator: Indicator) -> list[IndicatorItem]:
         logger.debug(f'Validating indicator items for indicator: {indicator.id}')
         child_items = [i for i in indicator.items if isinstance(i, IndicatorItem)]
         if not child_items:
@@ -105,7 +102,7 @@ class IOCScanner:
         logger.debug(f'Valid items count for indicator {indicator.id}: {len(valid_items)} out of {len(child_items)}')
         return valid_items
 
-    def _validate_child_indicators(self, indicator: Indicator) -> List[Indicator]:
+    def _validate_child_indicators(self, indicator: Indicator) -> list[Indicator]:
         logger.debug(f'Validating child indicators for indicator: {indicator.id}')
         children = [i for i in indicator.items if isinstance(i, Indicator)]
         if len(children) == 0:
@@ -116,7 +113,7 @@ class IOCScanner:
         logger.debug(f'Valid child indicators count for indicator {indicator.id}: {len(valid_children)} out of {len(children)}')
         return valid_children
 
-    def _evaluate_logic(self, valid_children: List[Union[IndicatorItem, Indicator]], indicator: Indicator) -> bool:
+    def _evaluate_logic(self, valid_children: list[IndicatorItem | Indicator], indicator: Indicator) -> bool:
         logger.debug(f'Evaluating logic for indicator: {indicator.id}')
         if indicator.operator is Operator.OR:
             result = bool(valid_children)

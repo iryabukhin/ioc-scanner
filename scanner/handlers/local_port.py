@@ -4,7 +4,6 @@ import psutil
 import socket
 
 from datetime import datetime
-from typing import List, Dict, Optional, Union
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler
@@ -18,7 +17,7 @@ class LocalPortHandler(BaseHandler):
         self._process_cache = {}
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'PortItem/CreationTime',
             'PortItem/localIP',
@@ -32,7 +31,7 @@ class LocalPortHandler(BaseHandler):
             'PortItem/state'
         ]
 
-    def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool:
         valid_items = []
         for item in items:
             term = item.get_term()

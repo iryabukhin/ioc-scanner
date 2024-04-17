@@ -2,7 +2,7 @@ import hashlib
 import os
 import psutil
 import json
-from typing import List, Dict, Optional, Union
+from typing import Optional, Union
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler
@@ -24,15 +24,17 @@ class ServiceItemHandler(BaseHandler):
 
     SIGNATURE_STATUS_VALID = 0
     SIGNATURE_STATUS_NOT_SIGNED = 2
+    SIGNATURE_STATUS_NOT_TRUSTED = 4
+    SIGNATURE_STATUS_FILE_FORMAT_ERROR = 5
+
     AUTHENTICODE_SIGNATURE_CMD = 'Get-AuthenticodeSignature'
 
     # taken from System.Management.Automation.SignatureStatus
     SIGNATURE_STATUS_VALUE_MAP = {
-        0: True,  # Valid
+        SIGNATURE_STATUS_VALID: True,  # Valid
         SIGNATURE_STATUS_NOT_SIGNED: False,  # UnknownError
-        2: False,  # NotSigned,
-        4: False,  # NotTrusted,
-        5: False,  # NotSupportedFileFormat
+        SIGNATURE_STATUS_NOT_TRUSTED: False,  # NotTrusted,
+        SIGNATURE_STATUS_FILE_FORMAT_ERROR: False,  # NotSupportedFileFormat
     }
 
     def __init__(self, config: ConfigObject):
@@ -47,7 +49,7 @@ class ServiceItemHandler(BaseHandler):
         self._scan_dll_signatures = config.get('scan_dll_signatures') or False
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'ServiceItem/arguments',
             'ServiceItem/description',
@@ -108,7 +110,7 @@ class ServiceItemHandler(BaseHandler):
                 logger.error(f'An error prevented fetching info about {service.name()} process: {str(e)}')
                 continue
 
-    def _get_service_args(self, service) -> Optional[str]:
+    def _get_service_args(self, service) -> str | None:
         binpath = service.binpath()
         if not binpath:
             return None
@@ -117,7 +119,7 @@ class ServiceItemHandler(BaseHandler):
             return None
         return ' '.join(parts[1:])
 
-    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
         if not OSType.is_win():
             # TODO: Figure out what we should do with Windows-only OpenIoC terms
             return True
@@ -138,8 +140,7 @@ class ServiceItemHandler(BaseHandler):
 
         return  operator == Operator.AND and len(valid_items) == len(items)
 
-
-    def _get_exec_dll_modules(self, pid: int) -> List[Dict[str, str]]:
+    def _get_exec_dll_modules(self, pid: int) -> list[dict[str, str]]:
         logger.info(f'[BEGIN] Fetching loaded DLL info for {pid=}')
 
         result = list()
@@ -188,7 +189,7 @@ class ServiceItemHandler(BaseHandler):
         logger.info(f'[END] Fetching loaded DLL info for {pid=}')
         return result
 
-    def _get_dll_signature_info(self, dll_path: str) -> Dict:
+    def _get_dll_signature_info(self, dll_path: str) -> dict:
         logger.info(f'[BEGIN] Fetching DLL signature info for file {dll_path}')
         result = dict()
         cmd = self.AUTHENTICODE_SIGNATURE_CMD
@@ -218,7 +219,7 @@ class ServiceItemHandler(BaseHandler):
         return result
 
 
-    def _get_dll_info(self, service) -> List[Dict[str, str]]:
+    def _get_dll_info(self, service) -> list[dict[str, str]]:
         proc = psutil.Process(pid=service.pid())
         try:
             return self._get_exec_dll_modules(int(proc.pid))
@@ -243,7 +244,7 @@ class ServiceItemHandler(BaseHandler):
         # we need to call lower() because system32 dir name is sometimes uppercased
         return srvc_binpath.lower().startswith(svchost_path.lower())
 
-    def _get_service_executable_hash(self, binary_path: str) ->  Dict[str, str]:
+    def _get_service_executable_hash(self, binary_path: str) ->  dict[str, str]:
         result = {
             'pathmd5sum': '',
             'pathsha1sum': '',
@@ -262,7 +263,7 @@ class ServiceItemHandler(BaseHandler):
         finally:
             return result
 
-    def _get_service_info(self) -> Dict[str, Dict]:
+    def _get_service_info(self) -> dict[str, dict]:
         if not self._service_cache:
             self._populate_cache()
         return self._service_cache

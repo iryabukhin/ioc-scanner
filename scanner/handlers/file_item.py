@@ -1,7 +1,5 @@
-from typing import Union, Optional, List, Dict, ByteString
 import os
 import stat
-import hashlib
 import psutil
 
 from datetime import datetime, timezone
@@ -14,6 +12,7 @@ from scanner.models import (
     IndicatorItemCondition as Condition
 )
 from scanner.utils import OSType
+from scanner.utils.hash import get_file_digest
 
 if OSType.is_win():
     import pefile
@@ -55,7 +54,7 @@ class FileItemHandler(BaseHandler):
         self.file_cache = dict()
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'FileItem/Md5sum',
             'FileItem/Sha1sum',
@@ -70,7 +69,7 @@ class FileItemHandler(BaseHandler):
             'FileItem/Accessed',
         ]
 
-    def _build_file_info(self, full_path: str) -> Dict:
+    def _build_file_info(self, full_path: str) -> dict:
         result = {
             'FileName': os.path.basename(full_path),
             'FullPath': os.path.abspath(full_path),
@@ -87,15 +86,11 @@ class FileItemHandler(BaseHandler):
 
         return result
 
-    def _calculate_file_hashes(self, full_path: str) -> Dict[str, str]:
-        hash_methods = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
-        hashes = {h.name: h for h in hash_methods}
-        with open(full_path, 'rb') as f:
-            for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
-                for hash_obj in hashes.values():
-                    hash_obj.update(chunk)
-        return {f'{h.name.title()}sum': h.hexdigest() for h in hashes.values()}
-    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+    def _calculate_file_hashes(self, full_path: str) -> dict[str, str]:
+        hashes = get_file_digest(full_path, 'md5', 'sha1', 'sha256')
+        return {f'{n.title()}sum': h for n, h in hashes.items()}
+
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
         self._update_scan_file_hash_preference(items)
         fullpath_item = next((i for i in items if i.context.search == 'FileItem/FullPath'), None)
         if fullpath_item is not None and operator is Operator.AND:
@@ -117,7 +112,7 @@ class FileItemHandler(BaseHandler):
 
         return bool(valid_items) if operator is Operator.OR else len(valid_items) == len(items)
 
-    def _populate_cache(self, root: Optional[str] = None) -> None:
+    def _populate_cache(self, root: str | None = None) -> None:
         if root is None:
             if OSType.is_win():
                 if self._scan_all_drives:
@@ -129,10 +124,10 @@ class FileItemHandler(BaseHandler):
                 root = self.LINUX_DEFAULT_ROOT_PATH
 
         self.file_cache = {
-            i['FullPath']: i for i in self._recursive_scan(root)
+            i['FullPath']: i for i in self._recursive_scan_threaded(root)
         }
 
-    def _recursive_scan(self, root: str) -> List[Dict]:
+    def _recursive_scan(self, root: str) -> list[dict]:
         logger.debug(f'Begin scanning root path "{root}" ...')
         if not os.path.exists(root):
             logger.warning(f'Path {root} does not exist, aborting scan...')
@@ -152,10 +147,10 @@ class FileItemHandler(BaseHandler):
                     except Exception as e:
                         logger.warning(f'Could not scan file "{fpath}" due to an unknown error: {str(e)}')
 
-    def _get_all_drives(self) -> List[str]:
+    def _get_all_drives(self) -> list[str]:
         return [p.mountpoint for p in psutil.disk_partitions() if p.fstype == 'NTFS']
 
-    def _get_creation_time(self, full_path) -> Optional[datetime]:
+    def _get_creation_time(self, full_path) -> datetime | None:
         try:
             if OSType.is_win():
                 timestamp = os.path.getctime(full_path)
@@ -181,12 +176,12 @@ class FileItemHandler(BaseHandler):
             return False
         return True
 
-    def _update_scan_file_hash_preference(self, items: List[IndicatorItem]) -> None:
+    def _update_scan_file_hash_preference(self, items: list[IndicatorItem]) -> None:
         hash_terms = {'Md5sum', 'Sha1sum', 'Sha256sum'}
         # Check if any item requires hash calculation
         self._scan_file_hash = any(item.get_term() in hash_terms for item in items)
 
-    def _build_pe_info(self, full_path: str) -> Dict:
+    def _build_pe_info(self, full_path: str) -> dict:
         try:
 
             logger.debug(f'Begin processing PE info for file "{full_path}" ...')

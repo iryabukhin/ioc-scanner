@@ -3,8 +3,6 @@ import json
 import re
 import subprocess
 
-from typing import List, Dict, Union, Optional
-
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
@@ -24,7 +22,7 @@ class ArpEntryHandler(BaseHandler):
         super().__init__(config)
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'ArpEntryItem/Interface',
             'ArpEntryItem/PhysicalAddress',
@@ -36,7 +34,7 @@ class ArpEntryHandler(BaseHandler):
             # 'ArpEntryItem/LastUnreachable',
         ]
 
-    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
         valid_items = []
         for item in items:
             matched = self._find_matched_arp_entries(item)
@@ -46,7 +44,7 @@ class ArpEntryHandler(BaseHandler):
 
         return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
 
-    def _find_matched_arp_entries(self, item: IndicatorItem) -> List[IndicatorItem]:
+    def _find_matched_arp_entries(self, item: IndicatorItem) -> list[IndicatorItem]:
         result = []
         term = item.get_term()
         if OSType.is_win():
@@ -105,7 +103,7 @@ class ArpEntryHandler(BaseHandler):
             ret.append(entry)
         return ret
 
-    def _determine_cache_type(self, flags: List[str]) -> str:
+    def _determine_cache_type(self, flags: list[str]) -> str:
         if 'M' in flags:
             return 'Dynamic'
         elif 'C' in flags:
@@ -113,7 +111,7 @@ class ArpEntryHandler(BaseHandler):
         else:
             return 'Unknown'
 
-    def _parse_pwrsh_arp_entries(self) -> List[Dict]:
+    def _parse_pwrsh_arp_entries(self) -> list[Dict]:
         result = list()
         try:
             cmd = subprocess.run(
@@ -178,7 +176,7 @@ class ArpEntryHandler(BaseHandler):
         return result
 
 
-    def _get_cmd_output(self, cmd: List[str]) -> str:
+    def _get_cmd_output(self, cmd: list[str]) -> str:
         try:
             run_result = subprocess.run(
                 cmd,

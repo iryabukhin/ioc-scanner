@@ -15,7 +15,7 @@ class ConfigObject(dict):
                         self[k] = v
                     elif isinstance(v, Iterable):
                         klass = type(v)
-                        map_value: List[Any] = []
+                        map_value: list[Any] = []
                         for e in v:
                             map_e = ConfigObject(e) if isinstance(e, dict) else e
                             map_value.append(map_e)

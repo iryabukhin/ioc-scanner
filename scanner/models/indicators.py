@@ -42,7 +42,7 @@ class IndicatorItem:
     context: IndicatorItemContext
     content: IndicatorItemContent
 
-    def get_terms(self) -> List[str]:
+    def get_terms(self) -> list[str]:
         return self.context.search.split(self.TERM_SEPARATOR)
 
     def get_term(self) -> str:
@@ -56,6 +56,6 @@ class Indicator:
     id: str
     operator: IndicatorItemOperator
     level: int
-    items: List[Union['Indicator', IndicatorItem]]
-    parent_id: Optional[str] = field(default=None)
+    items: list['Indicator' | IndicatorItem]
+    parent_id: str | None = field(default=None)
 

@@ -1,5 +1,5 @@
 
-from typing import Any, Dict, List, Tuple, Union, Optional, Iterable
+from typing import Any, Tuple, Union, Optional, Iterable
 import json
 import yaml
 import configparser
@@ -9,7 +9,7 @@ import abc
 
 class ConfigLoader:
     @abc.abstractmethod
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         raise NotImplementedError
 
 class FileConfigLoader(ConfigLoader):
@@ -20,20 +20,20 @@ class FileConfigLoader(ConfigLoader):
 
 class JsonConfigLoader(FileConfigLoader):
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         with open(self.file_path, 'r') as f:
             return json.load(f)
 
 class YamlConfigLoader(FileConfigLoader):
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         with open(self.file_path, 'r') as f:
             return yaml.safe_load(f)
 
 
 class IniFileConfigLoader(FileConfigLoader):
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         parser = configparser.ConfigParser()
         parser.read(self.file_path)
         # Convert to a dict of dicts

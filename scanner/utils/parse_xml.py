@@ -10,7 +10,7 @@ from scanner.models import *
 from scanner.models import Indicator
 
 
-def parse(ioc_document_content: str) -> List[Indicator]:
+def parse(ioc_document_content: str) -> list[Indicator]:
     try:
         dom = xml.dom.minidom.parseString(ioc_document_content)
     except Exception as e:

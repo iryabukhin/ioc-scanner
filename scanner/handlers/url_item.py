@@ -19,7 +19,7 @@ class UrlItemHandler(BaseHandler):
 
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'UrlHistoryItem/BrowserName',
             # 'UrlHistoryItem/BrowserVersion',
@@ -38,7 +38,7 @@ class UrlItemHandler(BaseHandler):
             # 'UrlHistoryItem/IndexedContent'
         ]
 
-    def validate(self, items: List[IndicatorItem], operator: IndicatorItemOperator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool:
         if not self._cache:
             self._fill_cache()
 

@@ -2,7 +2,6 @@ import psutil
 import socket
 import hashlib
 import os
-from typing import List, Dict, Optional, Union, Callable
 
 from loguru import logger
 
@@ -28,7 +27,7 @@ class ProcessItemHandler(BaseHandler):
         self._process_info = None
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'ProcessItem/arguments',
             'ProcessItem/name',
@@ -49,7 +48,7 @@ class ProcessItemHandler(BaseHandler):
             'ProcessItem/HandleList/Handle/Sha256sum',
         ]
 
-    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
         valid_items = set()
         for pid, process_data in self._get_process_info().items():
             for item in items:
@@ -61,7 +60,7 @@ class ProcessItemHandler(BaseHandler):
                         return True
         return bool(valid_items) if operator == Operator.OR else len(valid_items) == len(items)
 
-    def _get_process_info(self) -> Dict[str, Dict]:
+    def _get_process_info(self) -> dict[str, Dict]:
         if not self._process_info:
             self._populate_process_info()
         return self._process_info

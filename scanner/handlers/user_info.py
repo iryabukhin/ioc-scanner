@@ -1,4 +1,3 @@
-from typing import List, Dict, Union, Optional
 from datetime import datetime as dt, timezone as tz
 
 from scanner.config import ConfigObject
@@ -19,7 +18,7 @@ class UserItemHandler(BaseHandler):
         self._user_info_cache = {}
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'UserItem/description',
             'UserItem/disabled',
@@ -44,7 +43,7 @@ class UserItemHandler(BaseHandler):
         except Exception as e:
             logger.error(f"Exception occurred while fetching all users info: {str(e)}")
 
-    def _fetch_user_info(self, username: str) -> Dict[str, str]:
+    def _fetch_user_info(self, username: str) -> dict[str, str]:
         if username in self._user_info_cache:
             return self._user_info_cache[username]
 
@@ -56,7 +55,7 @@ class UserItemHandler(BaseHandler):
             logger.error(f"Exception occurred while fetching user info for {username}: {str(e)}")
         return {}
 
-    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
         if not items:
             return False
 
@@ -78,7 +77,7 @@ class UserItemHandler(BaseHandler):
 
         return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
 
-    def _validate_against_all_users(self, items: List[IndicatorItem], operator: Operator) -> bool:
+    def _validate_against_all_users(self, items: list[IndicatorItem], operator: Operator) -> bool:
         valid_items = []
         for username, user_info in self._user_info_cache.items():
             temp_valid_items = []

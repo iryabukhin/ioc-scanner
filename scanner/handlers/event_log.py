@@ -42,7 +42,7 @@ class EventLogItemHandler(BaseHandler):
         self._log_entry_cache = {}
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'EventLogItem/EID',
             'EventLogItem/log',
@@ -60,7 +60,7 @@ class EventLogItemHandler(BaseHandler):
             # 'EventLogItem/blob',
         ]
 
-    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
         for channel in [self.CHANNEL_APPLICATION, self.CHANNEL_SYSTEM, self.CHANNEL_SECURITY]:
             events = self._fetch_events(channel)
             filter_function = any if operator is Operator.OR else all

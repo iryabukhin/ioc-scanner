@@ -1,5 +1,4 @@
 
-from typing import List, Dict, Union, Optional
 from .loader import ConfigLoader
 from .config_object import ConfigObject
 
@@ -9,7 +8,7 @@ import os
 class ConfigManager:
 
     def __init__(self):
-        self._loaders: List[ConfigLoader] = list()
+        self._loaders: list[ConfigLoader] = list()
 
     def add_loader(self, loader: ConfigLoader, append: bool = True):
         if append:

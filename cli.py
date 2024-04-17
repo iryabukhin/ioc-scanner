@@ -81,15 +81,15 @@ def main():
 
     configure_logger(args.verbosity)
 
-    if args.mode == 'iocscan':
-        iocscan(args)
-    elif args.mode == 'yara-mem':
-        pass  # TODO: Implement yara-mem processing
-    elif args.mode == 'yara-file':
-        pass  # TODO: Implement yara-file processing
-    else:
-        logger.error(f'Unsupported mode: {args.mode}')
-        return
+    match args.mode:
+        case 'iocscan':
+            iocscan(args)
+        case 'yara-mem':
+            pass  # TODO: Implement yara-mem processing
+        case 'yara-file':
+            pass  # TODO: Implement yara-file processing
+        case _:
+            logger.error(f'Unsupported mode: {args.mode}')
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 
-from typing import List, Dict, Optional, Union, Callable, AnyStr, ByteString
+from typing import Optional, Union, Callable, AnyStr, ByteString
 from pathlib import Path
 
 import os
@@ -56,7 +56,7 @@ class RegistryItemHandler(BaseHandler):
         self._registry_cache = {}
 
     @staticmethod
-    def get_supported_terms() -> List[str]:
+    def get_supported_terms() -> list[str]:
         return [
             'RegistryItem/Hive',
             'RegistryItem/KeyPath',
@@ -106,7 +106,7 @@ class RegistryItemHandler(BaseHandler):
             }
         return registry_values
 
-    def validate(self, items: List[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
         if not OSType.is_win():
             return False
 

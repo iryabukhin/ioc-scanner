@@ -1,6 +1,6 @@
 import os.path
 import re
-from typing import Union, List, Dict, Optional
+from typing import Union, Optional
 from datetime import datetime as dt
 
 from scanner.models import IndicatorItem, IndicatorItemCondition as Condition
@@ -11,13 +11,13 @@ from loguru import logger
 HASH_STRING_TYPES = ['md5','sha1','sha256','sha512']
 IP_STRING_TYPES = ['IP', 'IPV4', 'IPV6']
 
-def _convert_value_type(type: str):
-    if type.lower() in HASH_STRING_TYPES:
+def _convert_value_type(t: str):
+    if t.lower() in HASH_STRING_TYPES:
         return 'string'
-    elif type.lower() in IP_STRING_TYPES:
+    elif t.lower() in IP_STRING_TYPES:
         return 'string'
     else:
-        return type
+        return t
 
 
 class ConditionValidator:
