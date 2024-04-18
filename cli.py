@@ -3,7 +3,7 @@ import os
 import sys
 import scanner.config
 
-from scanner.core.scanner import IOCScanner
+from scanner.core import IOCScanner
 from scanner.utils import parse
 
 from loguru import logger
