@@ -34,7 +34,7 @@ class LocalPortHandler(BaseHandler):
     def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool:
         valid_items = []
         for item in items:
-            term = item.get_term()
+            term = item.term
             if not term:
                 return False
 

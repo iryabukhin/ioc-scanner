@@ -1,5 +1,6 @@
 
 from dataclasses import dataclass, field
+from functools import cached_property
 from enum import Enum, auto
 from typing import List, Union, Dict, ClassVar, Optional
 
@@ -42,20 +43,23 @@ class IndicatorItem:
     context: IndicatorItemContext
     content: IndicatorItemContent
 
-    def get_terms(self) -> list[str]:
+    @cached_property
+    def all_terms(self) -> list[str]:
         return self.context.search.split(self.TERM_SEPARATOR)
 
-    def get_term(self) -> str:
-        return self.get_terms()[-1]
+    @cached_property
+    def term(self) -> str:
+        return self.all_terms[-1]
     def has_subterms(self) -> bool:
-        terms = [t for t in self.get_terms() if t != self.context.document]
+        terms = [t for t in self.all_terms if t != self.context.document]
         return len(terms) > 1
+
 
 @dataclass(frozen=True)
 class Indicator:
     id: str
     operator: IndicatorItemOperator
     level: int
-    items: list['Indicator' | IndicatorItem]
+    items: list[Union['Indicator', IndicatorItem]]
     parent_id: str | None = field(default=None)
 

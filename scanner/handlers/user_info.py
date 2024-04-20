@@ -71,7 +71,7 @@ class UserItemHandler(BaseHandler):
 
         valid_items = []
         for item in items:
-            value = user_info.get(item.get_term())
+            value = user_info.get(item.term)
             if value is not None and ConditionValidator.validate_condition(item, value):
                 valid_items.append(item)
 
@@ -82,7 +82,7 @@ class UserItemHandler(BaseHandler):
         for username, user_info in self._user_info_cache.items():
             temp_valid_items = []
             for item in items:
-                value = user_info.get(item.get_term())
+                value = user_info.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
                     temp_valid_items.append(item)
             if operator == Operator.AND and len(temp_valid_items) == len(items):
@@ -92,7 +92,7 @@ class UserItemHandler(BaseHandler):
                 break
         return bool(valid_items)
 
-    def _transform_user_info(self, raw_info: Dict) -> Dict:
+    def _transform_user_info(self, raw_info: dict) -> dict:
         return {
             'description': raw_info.get('comment'),
             'disabled': not raw_info.get('flags') & win32netcon.UF_ACCOUNTDISABLE,

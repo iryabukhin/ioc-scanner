@@ -104,7 +104,7 @@ class FileItemHandler(BaseHandler):
         valid_items = set()
         for item in items:
             for fullpath, file_data in self.file_cache.items():
-                value_to_check = file_data.get(item.get_term())
+                value_to_check = file_data.get(item.term)
                 if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
                     valid_items.add(item)
                     if operator == Operator.OR and self._lazy_evaluation:
@@ -179,7 +179,7 @@ class FileItemHandler(BaseHandler):
     def _update_scan_file_hash_preference(self, items: list[IndicatorItem]) -> None:
         hash_terms = {'Md5sum', 'Sha1sum', 'Sha256sum'}
         # Check if any item requires hash calculation
-        self._scan_file_hash = any(item.get_term() in hash_terms for item in items)
+        self._scan_file_hash = any(item.term in hash_terms for item in items)
 
     def _build_pe_info(self, full_path: str) -> dict:
         try:

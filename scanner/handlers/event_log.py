@@ -1,5 +1,4 @@
 import json
-from typing import List, Dict, Union, AnyStr, Optional
 
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import (
@@ -16,7 +15,6 @@ from loguru import logger
 if OSType.is_win():
     import win32evtlog, win32evtlogutil, win32con
     import pywintypes
-
 
 
 class EventLogItemHandler(BaseHandler):
@@ -79,7 +77,7 @@ class EventLogItemHandler(BaseHandler):
                     return False
         return False
 
-    def _fetch_events(self, source_name: Optional[str] = None) -> List:
+    def _fetch_events(self, source_name: str | None = None) -> list:
         ret = list()
 
         if not source_name:
@@ -104,24 +102,23 @@ class EventLogItemHandler(BaseHandler):
         return ret
 
     def _validate_single_item(self, event, item: IndicatorItem, source: str) -> bool:
-        if item.get_term() == 'EID':
-            value = int(event.EventID)
-        elif item.get_term() == 'message':
-            value = win32evtlogutil.SafeFormatMessage(event, source)
-        elif item.get_term() == 'source':
-            value = event.SourceName
-        elif item.get_term() == 'machine':
-            value = event.ComputerName
-        elif item.get_term() == 'type':
-            value = self.EVENT_TYPE_NAMES.get(event.EventType)
-        elif item.get_term() == 'index':
-            value = event.RecordNumber
-        elif item.get_term() == 'categoryNum':
-            value = event.EventCategory
-        elif item.get_term() == 'log':
-            value = source
-        else:
-            raise UnsupportedOpenIocTerm(f'Unsupported IOC term: {item.get_term()}')
+        match item.term:
+            case 'EID':
+                value = int(event.EventID)
+            case 'message':
+                value = win32evtlogutil.SafeFormatMessage(event, source)
+            case 'source':
+                value = event.SourceName
+            case 'index':
+                value = event.RecordNumber
+            case 'type':
+                value = self.EVENT_TYPE_NAMES.get(event.EventType)
+            case 'categoryNum':
+                value = event.EventCategory
+            case 'log':
+                value = source
+            case _:
+                raise UnsupportedOpenIocTerm(f'Unsupported IOC term: {item.term}')
 
         result = ConditionValidator.validate_condition(item, value)
         logger.debug(f"Validation result for item '{item.id}' is '{result}'")

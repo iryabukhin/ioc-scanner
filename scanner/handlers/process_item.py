@@ -52,15 +52,14 @@ class ProcessItemHandler(BaseHandler):
         valid_items = set()
         for pid, process_data in self._get_process_info().items():
             for item in items:
-                term = item.get_term()
-                value = process_data.get(term)
+                value = process_data.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
                     valid_items.add(item)
                     if operator == Operator.OR and self._lazy_evaluation:
                         return True
         return bool(valid_items) if operator == Operator.OR else len(valid_items) == len(items)
 
-    def _get_process_info(self) -> dict[str, Dict]:
+    def _get_process_info(self) -> dict[str, dict]:
         if not self._process_info:
             self._populate_process_info()
         return self._process_info
@@ -92,7 +91,7 @@ class ProcessItemHandler(BaseHandler):
                 else:
                     raise e
 
-    def _fetch_basic_process_data(self, proc) -> Dict:
+    def _fetch_basic_process_data(self, proc) -> dict:
         return {
             'pid': proc.pid,
             'name': proc.name(),

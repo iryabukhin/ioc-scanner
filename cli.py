@@ -1,10 +1,12 @@
 import argparse
 import os
 import sys
-import scanner.config
+import pickle
 
+import scanner.config
 from scanner.core import IOCScanner
-from scanner.utils import parse
+from scanner.utils import OpenIOCXMLParser
+
 
 from loguru import logger
 
@@ -42,7 +44,11 @@ def iocscan(args):
     try:
         with open(args.ioc, 'r') as ioc_file:
             content = ioc_file.read()
-            indicators = parse(content)
+            parser = OpenIOCXMLParser()
+            indicators = parser.parse(content)
+            if not indicators:
+                logger.error('Unable to parse OpenIoC document content.')
+                return
             matched_iocs = IOCScanner(config).process(indicators)
             if matched_iocs:
                 logger.info('General result: Valid')

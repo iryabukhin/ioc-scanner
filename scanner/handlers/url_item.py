@@ -45,8 +45,7 @@ class UrlItemHandler(BaseHandler):
         valid_items = set()
         for url, url_data in self._cache.items():
             for item in items:
-                term = item.get_term()
-                value = url_data.get(term)
+                value = url_data.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
                     if operator == Operator.OR:
                         return True

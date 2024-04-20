@@ -46,7 +46,6 @@ class ArpEntryHandler(BaseHandler):
 
     def _find_matched_arp_entries(self, item: IndicatorItem) -> list[IndicatorItem]:
         result = []
-        term = item.get_term()
         if OSType.is_win():
             output = self._fetch_win_arp_entries()
         elif OSType.is_linux():
@@ -55,12 +54,12 @@ class ArpEntryHandler(BaseHandler):
             return []
 
         for entry in output:
-            value_to_check = entry.get(term)
+            value_to_check = entry.get(item.term)
             if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
                 result.append(entry)
         return result
 
-    def _fetch_win_arp_entries(self) -> List:
+    def _fetch_win_arp_entries(self) -> list:
         return self._parse_win_arp_cmd_entries() \
             if self._is_powershell_available() \
             else self._parse_win_arp_cmd_entries()
@@ -75,7 +74,7 @@ class ArpEntryHandler(BaseHandler):
         except subprocess.CalledProcessError:
             return False
 
-    def _fetch_linux_arp_entries(self) -> List:
+    def _fetch_linux_arp_entries(self) -> list:
         cmd_output = self._get_cmd_output(['arp', '-en']).splitlines()
         if len(cmd_output) < 2:
             logger.warning('No data returned from linux "arp" command, skipping output processing...')
@@ -111,7 +110,7 @@ class ArpEntryHandler(BaseHandler):
         else:
             return 'Unknown'
 
-    def _parse_pwrsh_arp_entries(self) -> list[Dict]:
+    def _parse_pwrsh_arp_entries(self) -> list[dict]:
         result = list()
         try:
             cmd = subprocess.run(

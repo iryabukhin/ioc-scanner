@@ -130,8 +130,7 @@ class ServiceItemHandler(BaseHandler):
         valid_items = set()
         for name, service_data in self._get_service_info().items():
             for item in items:
-                term = item.get_term()
-                value = service_data.get(term)
+                value = service_data.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
                     if operator == Operator.OR and self._lazy_evaluation:
                         return True

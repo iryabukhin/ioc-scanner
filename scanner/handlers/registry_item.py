@@ -85,7 +85,7 @@ class RegistryItemHandler(BaseHandler):
         except FileNotFoundError as e:
             logger.error(f'Registry key not found: {str(e)}. Key path: {key_path}')
 
-    def _enumerate_key_values(self, key_handle, hive: str, key_path: str) -> Dict:
+    def _enumerate_key_values(self, key_handle, hive: str, key_path: str) -> dict:
         registry_values = {}
         subkey_count, num_values, last_modified = wg.QueryInfoKey(key_handle)
         full_key_path = self.PATH_DELIMITER.join([hive, key_path])
@@ -111,7 +111,7 @@ class RegistryItemHandler(BaseHandler):
             return False
 
         # We need to find the KeyPath item that will be used to fetch actual registry branch values
-        key_path_item = next((i for i in items if i.get_term().endswith('KeyPath')), None)
+        key_path_item = next((i for i in items if i.term.endswith('KeyPath')), None)
 
         if key_path_item:
             key_path = key_path_item.content.content
@@ -132,7 +132,7 @@ class RegistryItemHandler(BaseHandler):
             valid_items = set()
             for value_name, value_data in sorted(key_values.items()):
                 for item in items:
-                    value_to_check = value_data.get(item.get_term())
+                    value_to_check = value_data.get(item.term)
                     if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
                         if operator == Operator.OR:
                             return True
@@ -143,7 +143,7 @@ class RegistryItemHandler(BaseHandler):
             # Perform a full scan if no KeyPath item is provided
             logger.info("No KeyPath item provided, engaging full registry scan...")
 
-            specified_hives = [i.content.content for i in items if i.get_term() == 'Hive']
+            specified_hives = [i.content.content for i in items if i.term == 'Hive']
             specified_hives = [self.HIVE_ABBREVIATIONS.get(hive, hive) for hive in specified_hives]
             hives_to_scan = {name: key for name, key in self.HIVES.items() if
                              name in specified_hives or not specified_hives}
@@ -155,8 +155,7 @@ class RegistryItemHandler(BaseHandler):
                     for item in items:
                         if item in valid_items:
                             continue
-                        term = item.get_term()
-                        value_to_check = value.get(term)
+                        value_to_check = value.get(item.term)
                         if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
                             if operator == operator.OR:
                                 return True
