@@ -1,24 +1,52 @@
+import json
+import pickle
 
 from flask import Blueprint, jsonify, request
 
 from .models import Task, db
+from scanner.utils import OpenIOCXMLParser
 from scanner.yara import YaraScanner, SourceType
+from dataclasses import asdict
 
 views_blueprint = Blueprint('views', __name__)
 
-@views_blueprint.route('/tasks', methods=['POST'])
+
+def success(message: str, status: int = 200, data: dict = {}):
+    return jsonify({'status': 'success', 'message': message, 'data': data}), status
+
+
+def error(message: str, status: int = 400, data: dict = {}):
+    return jsonify({'status': 'error', 'message': message, 'data': data}), status
+
+
+@views_blueprint.route('/tasks/iocscan', methods=['POST'])
 def create_task():
     # Assuming the XML data is sent in the request body
     xml_data = request.data
     if not xml_data:
-        return jsonify({'error': 'No XML data provided'}), 400
-    task = Task(xml_data=xml_data.decode('utf-8'))
+        return error('No XML data provided')
+
+    parser = OpenIOCXMLParser()
+    indicators = parser.parse(xml_data.decode())
+
+    errors = parser.get_errors()
+    if errors:
+        return error(
+            'Some errors occurred during parsing of XML',
+            400, {'errors': errors}
+        )
+
+    if not indicators:
+        return error('XML is correct, but no indicators were found')
+
+    task = Task(data_serialized=pickle.dumps(indicators))
     db.session.add(task)
     db.session.commit()
-    return jsonify({'message': 'Task created', 'task_id': task.id}), 201
+    return success('Task created', 201, {'task_id': task.id})
+
 
 @views_blueprint.route('/tasks/<int:task_id>', methods=['GET'])
-def get_task_status(task_id):
+def get_task_status(task_id: int):
     task = Task.query.get_or_404(task_id)
     return jsonify(task.to_dict())
 
