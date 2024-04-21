@@ -1,4 +1,9 @@
 
+agent:
+  SQLALCHEMY_DATABASE_URI: "sqlite:///agent.db"
+  SQLALCHEMY_TRACK_MODIFICATIONS: false
+  FLASK_ENV: "development"
+
 ignore_unsupported_terms: False
 lazy_evaluation: False
 

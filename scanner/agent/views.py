@@ -1,4 +1,3 @@
-import json
 import pickle
 
 from flask import Blueprint, jsonify, request
@@ -6,7 +5,6 @@ from flask import Blueprint, jsonify, request
 from .models import Task, db
 from scanner.utils import OpenIOCXMLParser
 from scanner.yara import YaraScanner, SourceType
-from dataclasses import asdict
 
 views_blueprint = Blueprint('views', __name__)
 
@@ -39,7 +37,7 @@ def create_task():
     if not indicators:
         return error('XML is correct, but no indicators were found')
 
-    task = Task(data_serialized=pickle.dumps(indicators))
+    task = Task(data_serialized=pickle.dumps(indicators), type='openioc')
     db.session.add(task)
     db.session.commit()
     return success('Task created', 201, {'task_id': task.id})
@@ -54,7 +52,7 @@ def get_task_status(task_id: int):
 @views_blueprint.route('/tasks/yara/process', methods=['POST'])
 def yara_scan():
     if not request.is_json:
-        return jsonify({'error': 'Invalid request content type, must be "application/json"'}), 400
+        return error('Invalid request content type, must be "application/json"')
 
     rule_id = request.json.get('rule_id')
     rule = request.json.get('rule')
@@ -62,12 +60,8 @@ def yara_scan():
     pid = request.json.get('pid')
 
     if not all([pid, rule_id, rule]):
-        return jsonify({'error': 'Invalid request'}), 400
+        return error('Missing required parameters!')
 
     scanner = YaraScanner(rule, SourceType.STRING)
     matches = scanner.process_scan(pid)
-    return jsonify({'matches': matches}), 200
-
-
-def yara_scan_endpoint():
-    return yara_scan()
+    return success('Finished scan', 200, {'matches': matches})

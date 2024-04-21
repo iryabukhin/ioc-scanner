@@ -7,11 +7,11 @@ db = SQLAlchemy()
 
 class Task(db.Model):
     id = db.Column(Integer, primary_key=True)
-    type = db.Column(String(32), required=False)
-    status = db.Column(String(32), default='pending')  # pending, running, complete, error
-    data_serialized = db.Column(LargeBinary, required=True)
+    type = db.Column(db.String(32), nullable=False)
+    status = db.Column(db.String(32), default='pending')  # pending, running, complete, error
+    data_serialized = db.Column(db.PickleType, nullable=False)
     progress = db.Column(Integer, default=0)  # progress indicator (0-100)
-    additional_data = db.Column(String(256), required=False)
+    additional_data = db.Column(db.Text, nullable=True)
 
     def to_dict(self):
         return {
