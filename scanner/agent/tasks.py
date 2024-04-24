@@ -15,7 +15,7 @@ from scanner.core import IOCScanner
 from loguru import logger
 
 
-def process_task(task: Task, config: ConfigObject):
+def process_task(task: Task, config: ConfigObject) -> tuple[Task, list[str]]:
     try:
         indicators = pickle.loads(task.data_serialized)
     except pickle.PickleError as e:
@@ -26,11 +26,11 @@ def process_task(task: Task, config: ConfigObject):
         scanner = IOCScanner(config)
         result = scanner.process(indicators)
         task.status = 'completed'
-        return result
+        return task, result
     except Exception as e:
         task.status = 'failed'
         logger.error(f'Failed to process task: {str(e)}')
-        return None
+        return task, []
 
 
 def task_runner(config: ConfigObject, db_uri: str = None):
@@ -51,8 +51,9 @@ def task_runner(config: ConfigObject, db_uri: str = None):
                 with ThreadPoolExecutor() as executor:
                     futures_to_task = {executor.submit(process_task, task, config): task for task in tasks}
                     for future in as_completed(futures_to_task):
-                        task = futures_to_task[future]
-                        result = future.result()
+                        task, valid_indicators = futures_to_task[future]
+                        session.add(task)
+                    session.commit()
         except Exception as e:
             logger.exception(f'An error occurred while processing a task: {str(e)}')
         finally:

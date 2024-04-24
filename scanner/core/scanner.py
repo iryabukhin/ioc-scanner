@@ -51,8 +51,7 @@ class IOCScanner:
                 except Exception as e:
                     logger.error(f'Error loading handler from module {fname}: {e}')
 
-
-    def process(self, indicators: list[Indicator]):
+    def process(self, indicators: list[Indicator]) -> list[str]:
         logger.info(f'Processing {len(indicators)} indicators...')
         processed_ids = [i.id for i in indicators if self.validate_indicator(i)]
         logger.info(f'Processed indicators. Valid indicators: {len(processed_ids)}')
