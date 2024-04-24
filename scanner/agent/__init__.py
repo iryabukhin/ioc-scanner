@@ -1,10 +1,8 @@
 
 from flask import Flask
 from threading import Thread
-from sqlalchemy.orm import sessionmaker
-import atexit
 
-from .models import db
+from .db import db
 from .tasks import task_runner
 
 from scanner.config import ConfigObject
@@ -20,7 +18,7 @@ def create_app(config: ConfigObject):
     from .views import views_blueprint
     app.register_blueprint(views_blueprint)
 
-    task_runner_thread = Thread(target=task_runner, daemon=True, args=(config,))
+    task_runner_thread = Thread(target=task_runner, args=(config,), name='task_runner')
     task_runner_thread.start()
 
     return app

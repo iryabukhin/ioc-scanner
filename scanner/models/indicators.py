@@ -48,6 +48,10 @@ class IndicatorItem:
         return self.context.search.split(self.TERM_SEPARATOR)
 
     @cached_property
+    def type(self) -> str:
+        return self.all_terms[0]
+
+    @cached_property
     def term(self) -> str:
         return self.all_terms[-1]
     def has_subterms(self) -> bool:

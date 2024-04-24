@@ -2,7 +2,8 @@ import pickle
 
 from flask import Blueprint, jsonify, request
 
-from .models import Task, db
+from .models import Task
+from .db import db
 from scanner.utils import OpenIOCXMLParser
 from scanner.yara import YaraScanner, SourceType
 
@@ -37,7 +38,7 @@ def create_task():
     if not indicators:
         return error('XML is correct, but no indicators were found')
 
-    task = Task(data_serialized=pickle.dumps(indicators), type='openioc')
+    task = Task(type='openioc', data=pickle.dumps(indicators))
     db.session.add(task)
     db.session.commit()
     return success('Task created', 201, {'task_id': task.id})
