@@ -86,18 +86,23 @@ class IOCScanner:
             grouped_items = list(grouped_items)
             unsupported_items = {i.id: i for i in grouped_items if i.context.search not in self.handlers.keys()}
             supported_items = {i.id: i for i in grouped_items if i.id not in unsupported_items.keys()}
-            if len(unsupported_items) > 0 and self.ignore_unsupported_terms:
-                logger.warning(
-                    f'Ignoring unsupported items found in indicator {indicator.id}: {unsupported_items.values()}'
-                )
-                valid_items.extend(unsupported_items)
-            else:
-                raise UnsupportedOpenIocTerm(
-                    f'Unsupported items found for indicator {indicator.id}: {unsupported_items.values()}'
-                )
-            handler = self.handlers.get(item_type, None)
-            if handler.validate(supported_items.values(), indicator.operator):
-                valid_items.extend(supported_items.values())
+
+            if len(unsupported_items) > 0:
+                if self.ignore_unsupported_terms:
+                    logger.warning(
+                        f'Ignoring unsupported items found in indicator {indicator.id}: {unsupported_items.values()}'
+                    )
+                    valid_items.extend(unsupported_items)
+                else:
+                    raise UnsupportedOpenIocTerm(
+                        f'Unsupported items found for indicator {indicator.id}: {unsupported_items.values()}'
+                    )
+
+            # TODO: Need to re-structure this chunk of code. Perhaps handlers should only provide the type of indicator they support?
+            items = list(supported_items.values())
+            handler = self.handlers.get(items[0].context.search, None)
+            if handler.validate(items, indicator.operator):
+                valid_items.extend(list(supported_items.values()))
 
         logger.debug(f'Valid items count for indicator {indicator.id}: {len(valid_items)} out of {len(child_items)}')
         return valid_items

@@ -124,7 +124,7 @@ class FileItemHandler(BaseHandler):
                 root = self.LINUX_DEFAULT_ROOT_PATH
 
         self.file_cache = {
-            i['FullPath']: i for i in self._recursive_scan_threaded(root)
+            i['FullPath']: i for i in self._recursive_scan(root)
         }
 
     def _recursive_scan(self, root: str) -> list[dict]:
