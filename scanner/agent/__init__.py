@@ -2,6 +2,8 @@
 from flask import Flask
 from threading import Thread
 
+import atexit
+
 from .db import db
 from .tasks import task_runner
 
@@ -20,5 +22,10 @@ def create_app(config: ConfigObject):
 
     task_runner_thread = Thread(target=task_runner, args=(config,), name='task_runner')
     task_runner_thread.start()
+
+    def shutdown_task_runner():
+        task_runner_thread.join()
+
+    atexit.register(shutdown_task_runner)
 
     return app

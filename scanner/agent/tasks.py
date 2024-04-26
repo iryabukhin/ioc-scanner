@@ -1,11 +1,12 @@
+import json
 import time
 import os
 import pickle
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from .models import metadata, Task
 
@@ -14,23 +15,11 @@ from scanner.core import IOCScanner
 
 from loguru import logger
 
+from scanner.models import Indicator
 
-def process_task(task: Task, config: ConfigObject) -> tuple[Task, list[str]]:
-    try:
-        indicators = pickle.loads(task.data_serialized)
-    except pickle.PickleError as e:
-        logger.error(f'Failed to deserialize task: {str(e)}')
-        return
 
-    try:
-        scanner = IOCScanner(config)
-        result = scanner.process(indicators)
-        task.status = 'completed'
-        return task, result
-    except Exception as e:
-        task.status = 'failed'
-        logger.error(f'Failed to process task: {str(e)}')
-        return task, []
+def process_task(indicators: list[Indicator], config: ConfigObject) ->  list[str]:
+    return IOCScanner(config).process(indicators)
 
 
 def task_runner(config: ConfigObject, db_uri: str = None):
@@ -46,14 +35,40 @@ def task_runner(config: ConfigObject, db_uri: str = None):
     while True:
         try:
             tasks = session.query(Task).filter_by(status='pending').all()
-            logger.info('Fetching and running tasks..')
             if tasks:
-                with ThreadPoolExecutor() as executor:
-                    futures_to_task = {executor.submit(process_task, task, config): task for task in tasks}
+                indicators_per_task = dict()
+                for task in tasks:
+                    try:
+                        indicators_per_task[task] = pickle.load(task.data_serialized)
+                        task.status = 'processing'
+                    except Exception as e:
+                        logger.error(f'Failed to deserialize task: {str(e)}')
+                        task.status = 'error'
+                        task.additional_data = json.dumps({'error': str(e), 'error_type': 'deserialization'})
+
+                session.add_all(tasks)
+                session.commit()
+
+                with ProcessPoolExecutor() as executor:
+                    futures_to_task = {
+                        executor.submit(process_task, indicators, config): task for task, indicators in indicators_per_task.items()
+                    }
                     for future in as_completed(futures_to_task):
-                        task, valid_indicators = futures_to_task[future]
-                        session.add(task)
-                    session.commit()
+                        try:
+                            valid_indicators = future.result()
+                            task = futures_to_task[future]
+                            task.status = 'completed'
+                            task.progress = 100
+                            task.additional_data = json.dumps(valid_indicators)
+                        except Exception as e:
+                            task.status = 'error'
+                            task.progress = 0
+                            task.additional_data = json.dumps({'error': str(e)})
+                        finally:
+                            session.add(task)
+
+                session.commit()
+
         except Exception as e:
             logger.exception(f'An error occurred while processing a task: {str(e)}')
         finally:
