@@ -64,5 +64,5 @@ def yara_scan():
         return error('Missing required parameters!')
 
     scanner = YaraScanner(rule, SourceType.STRING)
-    matches = scanner.process_scan(pid)
+    matches = scanner.scan_process(pid, variables)
     return success('Finished scan', 200, {'matches': matches})
