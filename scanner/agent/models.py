@@ -1,6 +1,9 @@
 
+from typing import Optional
+
+
 from sqlalchemy import MetaData, Column, Integer, String
-from sqlalchemy.types import Integer, String, Text, PickleType
+from sqlalchemy.types import Integer, String, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 
 metadata = MetaData()
@@ -30,3 +33,23 @@ class Task(Base):
             'progress': self.progress,
             'additional_data': self.additional_data,
         }
+
+
+class YaraRule(Base):
+
+    __tablename__ = 'yara_rule'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullabe=False)
+    text = Column(Text, nullable=False)
+    compiled_data = Column(LargeBinary, nullable=True)
+
+    def __init__(self,
+         name: str,
+         text: Optional = None,
+         compiled_data: Optional = None
+    ):
+        self.name = name
+        self.text = text
+        self.compiled_data = compiled_data
+

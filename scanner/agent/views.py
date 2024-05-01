@@ -1,8 +1,11 @@
 import pickle
+import uuid
+import io
 
+import yara
 from flask import Blueprint, jsonify, request
 
-from .models import Task
+from .models import Task, YaraRule
 from .db import db
 from scanner.utils import OpenIOCXMLParser
 from scanner.yara import YaraScanner, SourceType
@@ -50,8 +53,51 @@ def get_task_status(task_id: int):
     return jsonify(task.to_dict())
 
 
-@views_blueprint.route('/tasks/yara/process', methods=['POST'])
-def yara_scan():
+@views_blueprint.route('/yara/add_rule', methods=['POST'])
+def yara_save():
+    if not request.is_json:
+        return error('Invalid request content type, must be "application/json"')
+
+    rule_name = request.json.get('name')
+    rule_text = request.json.get('text')
+    vars = request.json.get('vars')
+
+    buff = io.BytesIO()
+    try:
+        scanner = YaraScanner()
+        scanner.compile_rules(rule_text, SourceType.STRING)
+        compiled_rule = scanner.rules.save(file=buff)
+        rule = YaraRule(
+            name=rule_name or uuid.uuid4(),
+            text=rule_text,
+            compiled_data=buff.read()
+        )
+    except yara.Error as e:
+        return error(
+            'An error occurred during rule compilation',
+            data={'message': str(e)}
+        )
+
+    db.session.add(rule)
+    db.session.commit()
+    return success('Rule saved', 201, {'rule_id': rule.id})
+
+
+@views_blueprint.route('yara/<int:rule_id>/pid', methods=['POST'])
+def yara_scan(rule_id: int):
+    if not request.is_json:
+        return error('Invalid request content type, must be "application/json"')
+
+    variables = request.json.get('variables', {})
+    pid = request.json.get('pid')
+
+    scanner = YaraScanner(rule, SourceType.STRING)
+    matches = scanner.scan_process(pid, variables)
+    return success('Finished scan', 200, {'matches': matches})
+
+
+@views_blueprint.route('/yara/<int:rule_id>/file', methods=['GET'])
+def yara_file():
     if not request.is_json:
         return error('Invalid request content type, must be "application/json"')
 

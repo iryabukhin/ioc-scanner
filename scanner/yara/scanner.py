@@ -20,7 +20,7 @@ class YaraScanner:
 
     DEFAULT_TIMEOUT_SEC = 10
 
-    def __init__(self, rules_source: str, source_type: SourceType = SourceType.FILE):
+    def __init__(self):
         self._rules: yara.Rules = None
         self._timeout = self.DEFAULT_TIMEOUT_SEC
 
@@ -28,7 +28,7 @@ class YaraScanner:
     def rules(self) -> yara.Rules:
         return self._rules
 
-    def _compile_rules(self, rules_source: str, source_type: SourceType):
+    def compile_rules(self, rules_source: str, source_type: SourceType, vars: Optional[dict] = None):
         all_rules = None
         try:
             if source_type == SourceType.FILE:
@@ -75,17 +75,6 @@ class YaraScanner:
             )
 
         return self._do_scan({'pid': pid, 'externals': vars})
-
-        try:
-            matches = self._rules.match(pid=pid)
-            if matches:
-                logger.info(f'YARA matches found in process {pid}: {matches}')
-            else:
-                logger.info(f'No YARA matches found in process {pid}.')
-            return matches
-        except yara.Error as e:
-            logger.error(f'Error scanning process with YARA: {e}')
-            return None
 
     def _do_scan(self, params):
         matches = self._rules.match(
