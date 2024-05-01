@@ -40,7 +40,7 @@ class YaraRule(Base):
     __tablename__ = 'yara_rule'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullabe=False)
+    name = Column(String(255), nullable=False)
     text = Column(Text, nullable=False)
     compiled_data = Column(LargeBinary, nullable=True)
 
