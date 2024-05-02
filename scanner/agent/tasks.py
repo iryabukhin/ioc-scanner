@@ -1,48 +1,59 @@
 import json
-import time
-import os
+import threading
 import pickle
+
+import sqlalchemy.pool
+
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from .models import metadata, Task
+from .models import Task
 
 from scanner.config import ConfigObject
 from scanner.core import IOCScanner
+from scanner.models import Indicator
 
 from loguru import logger
 
-from scanner.models import Indicator
+
+def process_task(indicators: list[Indicator], config: ConfigObject) -> list[str]:
+    logger.remove()
+    logger.add(sink=f'task_runner_{"_".join([i.id for i in indicators if i.level == 1])}.log')
+    with logger.contextualize(thread_id=threading.get_native_id(), task='openioc'):
+        result = IOCScanner(config).process(indicators)
+    return result
 
 
-def process_task(indicators: list[Indicator], config: ConfigObject) ->  list[str]:
-    return IOCScanner(config).process(indicators)
-
-
+@logger.contextualize(thread_id=threading.get_native_id(), app='task_runner')
 def task_runner(config: ConfigObject, db_uri: str = None):
 
     if not db_uri:
         db_uri = config.get('SQLALCHEMY_DATABASE_URI')
 
-    engine = create_engine(db_uri)
+    engine = create_engine(db_uri, poolclass=sqlalchemy.pool.NullPool)
     session = Session(engine)
 
     logger.info('Starting task runner')
 
-    while True:
+    from . import shutdown_event
+
+    while not shutdown_event.is_set():
         try:
             tasks = session.query(Task).filter_by(status='pending').all()
             if tasks:
                 indicators_per_task = dict()
                 for task in tasks:
+
+                    logger.info(f'Begin processing tasks: ' + ', '.join([str(task.id) for task in tasks]))
+
                     try:
-                        indicators_per_task[task] = pickle.load(task.data_serialized)
+                        indicators_per_task[task] = pickle.loads(task.data_serialized)
                         task.status = 'processing'
                     except Exception as e:
-                        logger.error(f'Failed to deserialize task: {str(e)}')
+                        logger.error(f'Failed to deserialize task (task_id={task.id}): {str(e)}')
                         task.status = 'error'
                         task.additional_data = json.dumps({'error': str(e), 'error_type': 'deserialization'})
 
@@ -72,4 +83,7 @@ def task_runner(config: ConfigObject, db_uri: str = None):
         except Exception as e:
             logger.exception(f'An error occurred while processing a task: {str(e)}')
         finally:
-            time.sleep(10)
+            if shutdown_event.wait(timeout=10):
+                logger.info('Received shutdown event')
+                session.close()
+                engine.dispose()

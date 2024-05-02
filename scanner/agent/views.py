@@ -3,11 +3,18 @@ import uuid
 import io
 
 import yara
+
+from typing import Optional
+
+from pydantic import BaseModel
+
 from flask import Blueprint, jsonify, request
+from flask_pydantic import validate
 from sqlalchemy import select, and_,  or_
 
 from .models import Task, YaraRule
 from .db import db
+
 from scanner.utils import OpenIOCXMLParser
 from scanner.yara import YaraScanner, SourceType
 
@@ -76,24 +83,24 @@ def yara_list_all():
     return success('fetched all rules', data={'rules': rules})
 
 
+class YaraRuleCreateRequestBody(BaseModel):
+    text: str
+    name: Optional[str]
+    variables: Optional[dict] = {}
+
+
 @views_blueprint.route('/yara/add_rule', methods=['POST'])
-def yara_save():
-    if not request.is_json:
-        return error('Invalid request content type, must be "application/json"')
-
-    rule_name = request.json.get('name')
-    rule_text = request.json.get('text')
-    variables = request.json.get('vars')
-
+@validate()
+def yara_save(body: YaraRuleCreateRequestBody):
     buffer = io.BytesIO()
     try:
         scanner = YaraScanner()
-        scanner.compile_rules(rule_text, SourceType.STRING, variables)
+        scanner.compile_rules(body.text, SourceType.STRING, body.variables)
         scanner.rules.save(file=buffer)
         buffer.seek(0)
         rule = YaraRule(
-            name=rule_name or str(uuid.uuid4()),
-            text=rule_text,
+            name=body.name or str(uuid.uuid4()),
+            text=body.text,
             compiled_data=buffer.read()
         )
     except yara.Error as e:
@@ -107,16 +114,20 @@ def yara_save():
     return success('Rule saved', 201, {'rule_id': rule.id})
 
 
+
+class YaraScanRequestBody(BaseModel):
+    variables: Optional[dict] = {}
+
+class YaraProcessScanRequestBody(YaraScanRequestBody):
+    pid: int
+
+class YaraFileScanRequestBody(YaraScanRequestBody):
+    filepath: str
+
+
 @views_blueprint.route('/yara/<rule_id_or_name>/pid', methods=['POST'])
-def yara_scan(rule_id_or_name: str):
-    if not request.is_json:
-        return error('Invalid request content type, must be "application/json"')
-
-    variables = request.json.get('variables', {})
-    pid = request.json.get('pid')
-    if not pid:
-        return error('No pid provided!')
-
+@validate(body=YaraProcessScanRequestBody)
+def yara_scan(rule_id_or_name: str, body: YaraProcessScanRequestBody):
     rule = fetch_rule(rule_id_or_name)
     try:
         scanner = YaraScanner()
@@ -125,7 +136,7 @@ def yara_scan(rule_id_or_name: str):
         return error(f'Failed to load pre-compiled Yara rule "{rule_id_or_name}"')
 
     try:
-        matches = scanner.scan_process(pid, variables)
+        matches = scanner.scan_process(body.pid, body.variables)
     except PermissionError as e:
         return error('Unable to perform a scan due to a permission error', data={'errmsg': str(e)})
     except Exception as e:
@@ -135,15 +146,8 @@ def yara_scan(rule_id_or_name: str):
 
 
 @views_blueprint.route('/yara/<rule_id_or_name>/file', methods=['POST'])
-def yara_file(rule_id_or_name: str):
-    if not request.is_json:
-        return error('Invalid request content type, must be "application/json"')
-
-    variables = request.json.get('variables', {})
-    filepath = request.json.get('filepath')
-    if not filepath:
-        return error('No filepath provided!')
-
+@validate(body=YaraFileScanRequestBody)
+def yara_file(rule_id_or_name: str, body: YaraFileScanRequestBody):
     rule = fetch_rule(rule_id_or_name)
     try:
         scanner = YaraScanner()
@@ -152,7 +156,7 @@ def yara_file(rule_id_or_name: str):
         return error(f'Failed to load pre-compiled Yara rule "{rule_id_or_name}"', data={'errmsg': str(e)})
 
     try:
-        matches = scanner.scan_file(filepath, variables)
+        matches = scanner.scan_file(body.filepath, body.variables)
     except PermissionError as e:
         return error('Unable to performa a scan due to a permission error', data={'errmsg': str(e)})
     except Exception as e:

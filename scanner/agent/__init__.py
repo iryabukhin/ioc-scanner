@@ -1,13 +1,15 @@
-
 from flask import Flask
-from threading import Thread
+from werkzeug.serving import is_running_from_reloader
 
+import threading
 import atexit
 
 from .db import db
 from .tasks import task_runner
 
 from scanner.config import ConfigObject
+
+shutdown_event = threading.Event()
 
 
 def create_app(config: ConfigObject):
@@ -20,12 +22,13 @@ def create_app(config: ConfigObject):
     from .views import views_blueprint
     app.register_blueprint(views_blueprint)
 
-    task_runner_thread = Thread(target=task_runner, args=(config,), name='task_runner')
-    task_runner_thread.start()
+    if not is_running_from_reloader():
+        task_runner_thread = threading.Thread(target=task_runner, args=(config,), name='task_runner')
+        def shutdown_task_runner():
+            shutdown_event.set()
+            task_runner_thread.join()
 
-    def shutdown_task_runner():
-        task_runner_thread.join()
-
-    atexit.register(shutdown_task_runner)
+        atexit.register(shutdown_task_runner)
+        task_runner_thread.start()
 
     return app
