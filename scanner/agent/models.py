@@ -2,9 +2,10 @@
 from typing import Optional
 
 
-from sqlalchemy import MetaData, Column, Integer, String
+from sqlalchemy import MetaData, Column, Integer, String, DateTime
 from sqlalchemy.types import Integer, String, Text, PickleType, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql import func
 
 metadata = MetaData()
 Base = declarative_base(metadata=metadata)
@@ -52,4 +53,19 @@ class YaraRule(Base):
         self.name = name
         self.text = text
         self.compiled_data = compiled_data
+
+class APIKey(Base):
+
+    __tablename__ = 'api_key'
+
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    uuid = Column(String(64), nullable=False)
+    label = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    def __init(self, key, uuid, label):
+        self.key = key
+        self.uuid = uuid
+        self.label = label
 

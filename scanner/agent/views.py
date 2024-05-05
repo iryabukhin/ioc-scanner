@@ -14,6 +14,7 @@ from sqlalchemy import select, and_,  or_
 
 from .models import Task, YaraRule
 from .db import db
+from .auth import api_key_required
 
 from scanner.utils import OpenIOCXMLParser
 from scanner.yara import YaraScanner, SourceType
@@ -77,6 +78,7 @@ def get_task_status(task_id: int):
 
 
 @views_blueprint.route('/yara/rules', methods=['GET'])
+@api_key_required
 def yara_list_all():
     all_rules = db.session.query().with_entities(YaraRule.id, YaraRule.name, YaraRule.text)
     rules = {rule[0]: rule[1] for rule in all_rules}
@@ -90,6 +92,7 @@ class YaraRuleCreateRequestBody(BaseModel):
 
 
 @views_blueprint.route('/yara/add_rule', methods=['POST'])
+@api_key_required
 @validate()
 def yara_save(body: YaraRuleCreateRequestBody):
     buffer = io.BytesIO()
@@ -126,6 +129,7 @@ class YaraFileScanRequestBody(YaraScanRequestBody):
 
 
 @views_blueprint.route('/yara/<rule_id_or_name>/pid', methods=['POST'])
+@api_key_required
 @validate(body=YaraProcessScanRequestBody)
 def yara_scan(rule_id_or_name: str, body: YaraProcessScanRequestBody):
     rule = fetch_rule(rule_id_or_name)
@@ -146,6 +150,7 @@ def yara_scan(rule_id_or_name: str, body: YaraProcessScanRequestBody):
 
 
 @views_blueprint.route('/yara/<rule_id_or_name>/file', methods=['POST'])
+@api_key_required
 @validate(body=YaraFileScanRequestBody)
 def yara_file(rule_id_or_name: str, body: YaraFileScanRequestBody):
     rule = fetch_rule(rule_id_or_name)
