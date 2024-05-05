@@ -7,7 +7,7 @@ config_manager.add_loader(YamlConfigLoader('config.yaml'))
 config = config_manager.load_config()
 
 
-app = create_app(config)
+app = create_app(config, start_task_runner=True)
 
 if __name__ == '__main__':
     app.run(debug=True)
