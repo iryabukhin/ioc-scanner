@@ -36,7 +36,7 @@ class YaraScanner:
         return self._rules
 
     def compile_rules(self, rules_source: str, source_type: SourceType, vars: Optional[dict] = None):
-        all_rules = None
+        all_rules = ''
         vars = {} if vars is None else vars
         if source_type == SourceType.FILE:
             path = rules_source
