@@ -25,6 +25,7 @@ class YaraScanner:
     def __init__(self):
         self._rules: yara.Rules = None
         self._timeout = self.DEFAULT_TIMEOUT_SEC
+        self._ignore_compilation_errors: bool = False
 
     @property
     def rules(self) -> yara.Rules:
@@ -39,7 +40,10 @@ class YaraScanner:
         vars = {} if vars is None else vars
         if source_type == SourceType.FILE:
             path = rules_source
-            rule_files = [f for f in os.listdir(path)] if os.path.isdir(path) else path
+            if not os.path.exists(path):
+                raise FileNotFoundError(f'YARA rule file {path} does not exist!')
+            path = os.path.abspath(path)
+            rule_files = [f for f in os.listdir(path)] if os.path.isdir(path) else [path]
             for filename in rule_files:
                 if os.path.isdir(filename):
                     continue
@@ -47,7 +51,15 @@ class YaraScanner:
                 if extension != '.yar' and extension != '.yara':
                     continue
                 with open(filename, 'r') as f:
-                    all_rules += yara.compile(source=f.read(), externals=vars)
+                    file_content = f.read()
+                    try:
+                        compiled_rule = yara.compile(source=file_content, externals=vars)
+                    except yara.Error as e:
+                        if self._ignore_compilation_errors:
+                            continue
+                        else:
+                            raise ValueError(f'Could not compile rule from file {filename}: {str(e)}')
+                    all_rules += file_content
             self._rules = yara.compile(source=all_rules, externals=vars)
         elif source_type == SourceType.STRING:
             self._rules = yara.compile(source=rules_source, externals=vars)
@@ -62,8 +74,7 @@ class YaraScanner:
         buffer.seek(0)
         self._rules = yara.load(file=buffer)
 
-
-    def scan_file(self, file_path: str, rule_variables: Optional[dict[str]] = None):
+    def scan_file(self, file_path: str, rule_variables: Optional[dict[str]] = None) -> list[dict[str, list[str]]]:
         if not os.path.exists(file_path):
             raise ValueError(f'File does not exist: {file_path}')
 
@@ -73,7 +84,7 @@ class YaraScanner:
             'externals': rule_variables
         })
 
-    def scan_process(self, pid: int, vars: Optional[dict] = None):
+    def scan_process(self, pid: int, vars: Optional[dict] = None) -> list[dict[str, list[str]]]:
         if vars is None:
             vars = {}
 
@@ -93,7 +104,7 @@ class YaraScanner:
         )
         return [self._process_match(m) for m in matches]
 
-    def _process_match(self, match: yara.Match) -> dict:
+    def _process_match(self, match: yara.Match) -> dict[str, list[str]]:
         result = {}
         matched_strings = {}
         if hasattr(match, 'strings'):
