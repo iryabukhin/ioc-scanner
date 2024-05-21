@@ -10,6 +10,8 @@ class BaseHandler:
 
     def __init__(self, config: ConfigObject) -> None:
         self.config = config
+        self._lazy_evaluation = config.get('lazy_evaluation', True)
+        self._ignore_errors = config.get('ignore_errors', False)
 
     @staticmethod
     @abc.abstractmethod
