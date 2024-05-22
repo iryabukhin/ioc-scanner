@@ -6,8 +6,9 @@ import socket
 from datetime import datetime
 
 from scanner.config import ConfigObject
-from scanner.core import BaseHandler
-from scanner.models import IndicatorItem, IndicatorItemOperator
+from scanner.core import BaseHandler, ConditionValidator
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator, ValidationResult
+
 
 class LocalPortHandler(BaseHandler):
     def __init__(self, config: ConfigObject):
@@ -31,17 +32,23 @@ class LocalPortHandler(BaseHandler):
             'PortItem/state'
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool:
-        valid_items = []
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+        result = ValidationResult()
+        result.set_lazy_evaluation(self._lazy_evaluation)
+
         for item in items:
-            term = item.term
-            if not term:
-                return False
+            if not self._port_info:
+                self._populate_port_info()
 
-            if self._evaluate_condition(term, item):
-                valid_items.append(item)
+            for port_data in self._port_info.values():
+                value_to_check = port_data.get(item.term)
+                if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
+                    result.add_matched_item(item, context={'port_data': port_data})
+                    if operator == Operator.OR and self._lazy_evaluation:
+                        result.skip_remaining_items(items)
+                        return result
 
-        return bool(valid_items) if operator is IndicatorItemOperator.OR else len(valid_items) == len(items)
+        return result
 
     def _populate_port_info(self):
         connections = psutil.net_connections()

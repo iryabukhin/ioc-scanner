@@ -9,7 +9,7 @@ from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import (
     IndicatorItem,
     IndicatorItemOperator as Operator,
-    IndicatorItemCondition as Condition
+    IndicatorItemCondition as Condition, ValidationResult
 )
 from scanner.utils import OSType
 from scanner.utils.hash import get_file_digest
@@ -43,8 +43,6 @@ class FileItemHandler(BaseHandler):
 
     def __init__(self, config: ConfigObject):
         super().__init__(config)
-
-        self._lazy_evaluation = config.get('lazy_evaluation', True)
 
         config = self.config.get('file_item', {})
         self._scan_file_hash = config.get('scan_file_hash', True)
@@ -90,7 +88,11 @@ class FileItemHandler(BaseHandler):
         hashes = get_file_digest(full_path, 'md5', 'sha1', 'sha256')
         return {f'{n.title()}sum': h for n, h in hashes.items()}
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+        result = ValidationResult()
+
+        result.set_lazy_evaluation(self._lazy_evaluation)
+
         self._update_scan_file_hash_preference(items)
         fullpath_item = next((i for i in items if i.context.search == 'FileItem/FullPath'), None)
         if fullpath_item is not None and operator is Operator.AND:
@@ -101,16 +103,20 @@ class FileItemHandler(BaseHandler):
         elif not self.file_cache:
             self._populate_cache()
 
-        valid_items = set()
+        finish = False
         for item in items:
+            if finish:
+                break
             for fullpath, file_data in self.file_cache.items():
                 value_to_check = file_data.get(item.term)
                 if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
-                    valid_items.add(item)
+                    result.add_matched_item(item, context=file_data)
                     if operator == Operator.OR and self._lazy_evaluation:
-                        return True
+                        result.skip_remaining_items(items)
+                        finish = True
+                        break
 
-        return bool(valid_items) if operator is Operator.OR else len(valid_items) == len(items)
+        return result
 
     def _populate_cache(self, root: str | None = None) -> None:
         if root is None:

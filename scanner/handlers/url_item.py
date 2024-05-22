@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict, Optional
 
 from scanner.core import BaseHandler, ConditionValidator
 from scanner.config import ConfigObject
-from scanner.models import IndicatorItem, IndicatorItemOperator as Operator, IndicatorItemOperator
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator, ValidationResult
 
 import browser_history
 from urllib.parse import urlparse
@@ -38,7 +38,10 @@ class UrlItemHandler(BaseHandler):
             # 'UrlHistoryItem/IndexedContent'
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+        result = ValidationResult()
+        result.set_lazy_evaluation(self._lazy_evaluation)
+
         if not self._cache:
             self._fill_cache()
 
@@ -47,9 +50,9 @@ class UrlItemHandler(BaseHandler):
             for item in items:
                 value = url_data.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
-                    if operator == Operator.OR:
+                    result.add_matched_item(item)
+                    if operator == Operator.OR and self._lazy_evaluation:
                         return True
-                    valid_items.add(item)
         return operator == Operator.AND and len(valid_items) == len(items)
 
     def _fill_cache(self):

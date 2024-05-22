@@ -7,7 +7,7 @@ from loguru import logger
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
-from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator, ValidationResult
 from scanner.utils import OSType
 from scanner.utils.hash import calculate_hash
 
@@ -48,7 +48,7 @@ class ProcessItemHandler(BaseHandler):
             'ProcessItem/HandleList/Handle/Sha256sum',
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
         valid_items = set()
         for pid, process_data in self._get_process_info().items():
             for item in items:

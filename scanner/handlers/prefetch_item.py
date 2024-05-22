@@ -2,7 +2,7 @@ from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import (
     IndicatorItem,
     IndicatorItemOperator as Operator,
-    IndicatorItemCondition as Condition
+    IndicatorItemCondition as Condition, ValidationResult
 )
 from scanner.config import ConfigObject
 from scanner.utils import from_windows_timestamp
@@ -38,26 +38,26 @@ class PrefetchItemHandler(BaseHandler):
             'PrefetchItem/VolumeList/VolumeItem/SerialNumber',
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
-        valid_items = set()
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+        result = ValidationResult()
+        result.set_lazy_evaluation(self._lazy_evaluation)
 
         for item in items:
             for pf_file in self._get_prefetch_files():
                 try:
                     pf_data = self._parse_prefetch_file(pf_file)
                 except Exception as e:
-                    logger.error(e)
-                    if self._ignore_errors:
-                        continue
-                    else:
-                        raise e
+                    errmsg = f'Could not fetch data about a Prefetch file {pf_file}: ' + str(e)
+                    logger.error(errmsg)
+                    continue
 
                 if self._validate_single_item(pf_data, item):
-                    valid_items.add(item)
+                    result.add_matched_item(item, context={'pf_file': pf_file})
                     if Operator == Operator.OR and self._lazy_evaluation:
-                        return True
+                        result.add_skipped_items(items)
+                        return result
 
-        return bool(valid_items) if operator is Operator.OR else len(valid_items) == len(items)
+        return result
 
     def _get_prefetch_files(self) -> list[str]:
         return [os.path.join(self.PREFETCH_DIR, f) for f in os.listdir(self.PREFETCH_DIR) if f.endswith('.pf')]

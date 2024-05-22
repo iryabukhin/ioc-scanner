@@ -10,7 +10,7 @@ from scanner.core.conditions import ConditionValidator
 from scanner.models import (
     IndicatorItem,
     IndicatorItemOperator as Operator,
-    IndicatorItemCondition as Condition
+    IndicatorItemCondition as Condition, ValidationResult
 )
 from scanner.utils import OSType, get_cmd_output
 
@@ -119,7 +119,8 @@ class ServiceItemHandler(BaseHandler):
             return None
         return ' '.join(parts[1:])
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+        result = ValidationResult()
         if not OSType.is_win():
             # TODO: Figure out what we should do with Windows-only OpenIoC terms
             return True
@@ -127,17 +128,16 @@ class ServiceItemHandler(BaseHandler):
         if not self._service_cache:
             self._populate_cache()
 
-        valid_items = set()
         for name, service_data in self._get_service_info().items():
             for item in items:
                 value = service_data.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
+                    result.add_matched_item(item, context={'service': service_data})
                     if operator == Operator.OR and self._lazy_evaluation:
-                        return True
-                    else:
-                        valid_items.add(item)
+                        result.add_skipped_items(items)
+                        return result
 
-        return  operator == Operator.AND and len(valid_items) == len(items)
+        return result
 
     def _get_exec_dll_modules(self, pid: int) -> list[dict[str, str]]:
         logger.info(f'[BEGIN] Fetching loaded DLL info for {pid=}')

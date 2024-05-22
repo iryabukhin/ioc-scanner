@@ -1,6 +1,9 @@
 import argparse
+import csv
+import json
 import os
 import sys
+from typing import io
 
 import psutil
 
@@ -61,12 +64,25 @@ def yara_scan(args):
         print(f'An error occurred during the scan: {str(e)}')
         sys.exit(1)
 
-    print('Found matches: ')
-    for match in matches:
-        for rule_name, strings in match.items():
-            print(f'Rule: {rule_name}')
-            for i, string in enumerate(strings):
-                print(f'\t {str(i+1)}: {string}')
+    if args.format == 'json':
+        output = json.dumps(matches)
+        print(output)
+    elif args.format == 'csv':
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Rule Name", "Match Index", "Matched String"])
+        for match in matches:
+            for rule_name, strings in match.items():
+                for i, string in enumerate(strings):
+                    writer.writerow([rule_name, i + 1, string])
+        print(output.getvalue())
+    else:
+        print('Found matches: ')
+        for match in matches:
+            for rule_name, strings in match.items():
+                print(f'Rule: {rule_name}')
+                for i, string in enumerate(strings):
+                    print(f'\t {str(i+1)}: {string}')
 
 
 def iocscan(args):
@@ -111,6 +127,12 @@ def main():
         '-c', '--config',
         required=True,
         help='Path to the configuration file (JSON or YAML).'
+    )
+    common_args_parser.add_argument(
+        '--format',
+        choices=['json', 'csv', 'plain'],
+        default='json',
+        help='Specify the output format (JSON, CSV, or plain).'
     )
 
     subparsers = parser.add_subparsers(dest='mode', required=True, help='mode of operation of scanner')

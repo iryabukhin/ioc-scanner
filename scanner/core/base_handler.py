@@ -3,7 +3,7 @@ import abc
 from typing import Union, Optional
 
 from scanner.config import ConfigObject
-from scanner.models import IndicatorItem, IndicatorItemOperator
+from scanner.models import IndicatorItem, IndicatorItemOperator, ValidationResult
 
 
 class BaseHandler:
@@ -20,5 +20,5 @@ class BaseHandler:
 
 
     @abc.abstractmethod
-    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool | ValidationResult:
         raise NotImplementedError

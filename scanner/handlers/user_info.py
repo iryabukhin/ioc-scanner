@@ -2,7 +2,7 @@ from datetime import datetime as dt, timezone as tz
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
-from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator, ValidationResult
 from scanner.utils import OSType
 
 if OSType.is_win():
@@ -55,7 +55,7 @@ class UserItemHandler(BaseHandler):
             logger.error(f"Exception occurred while fetching user info for {username}: {str(e)}")
         return {}
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
         if not items:
             return False
 
@@ -65,32 +65,33 @@ class UserItemHandler(BaseHandler):
             self._fetch_all_users_info()
             return self._validate_against_all_users(items, operator)
 
+        result = ValidationResult()
         user_info = self._fetch_user_info(username_item.content.content)
         if not user_info:
-            return False
+            result.add_error_items(items, 'User not found')
+            return result
 
-        valid_items = []
         for item in items:
             value = user_info.get(item.term)
             if value is not None and ConditionValidator.validate_condition(item, value):
-                valid_items.append(item)
+                result.add_matched_item(item, context={'user_info': user_info})
+                if operator == Operator.OR and self._lazy_evaluation:
+                    result.skip_remaining_items(items)
+                    return result
 
-        return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
+        return result
 
-    def _validate_against_all_users(self, items: list[IndicatorItem], operator: Operator) -> bool:
-        valid_items = []
+    def _validate_against_all_users(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
+        result = ValidationResult()
         for username, user_info in self._user_info_cache.items():
-            temp_valid_items = []
             for item in items:
                 value = user_info.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
-                    temp_valid_items.append(item)
-            if operator == Operator.AND and len(temp_valid_items) == len(items):
-                valid_items.extend(temp_valid_items)
-            elif operator == Operator.OR and temp_valid_items:
-                valid_items.extend(temp_valid_items)
-                break
-        return bool(valid_items)
+                    result.add_matched_item(item)
+                    if operator == Operator.OR and self._lazy_evaluation:
+                        result.skip_remaining_items(items)
+                        return result
+        return result
 
     def _transform_user_info(self, raw_info: dict) -> dict:
         return {

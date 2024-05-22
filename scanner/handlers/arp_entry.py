@@ -5,7 +5,7 @@ import subprocess
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
-from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator, ValidationResult
 from scanner.utils import OSType, get_cmd_output
 
 from loguru import logger
@@ -34,15 +34,15 @@ class ArpEntryHandler(BaseHandler):
             # 'ArpEntryItem/LastUnreachable',
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
-        valid_items = []
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+        result = ValidationResult()
         for item in items:
             matched = self._find_matched_arp_entries(item)
             logger.debug(f'Found {len(matched)} matching ARP entries for item {item.id}: {str(matched)}')
             if len(matched) > 0:
-                valid_items.append(item)
+                result.add_matched_item(item, context={'entries': matched})
 
-        return len(valid_items) == len(items) if operator == Operator.AND else bool(valid_items)
+        return result
 
     def _find_matched_arp_entries(self, item: IndicatorItem) -> list[IndicatorItem]:
         result = []

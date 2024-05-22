@@ -1,8 +1,9 @@
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from functools import cached_property
 from enum import Enum, auto
-from typing import List, Union, Dict, ClassVar, Optional
+from typing import Union, ClassVar, Optional
 
 
 class IndicatorItemOperator(Enum):
@@ -66,4 +67,64 @@ class Indicator:
     level: int
     items: list[Union['Indicator', IndicatorItem]]
     parent_id: str | None = field(default=None)
+
+
+@dataclass
+class ValidationResult:
+    matched_items: list[IndicatorItem] = field(default_factory=list)
+    skipped_items: list[IndicatorItem] = field(default_factory=list)
+    error_items: list[IndicatorItem] = field(default_factory=list)
+
+    error_logs: list[str] = field(default_factory=list)
+
+    evaluation_mode: str = field(default='eager')
+
+    item_context: dict[str, dict] = field(default_factory=dict)
+    artifact_info: dict[str, dict] = field(default_factory=dict)
+
+    execution_duration: Optional[int] = None  # duration in seconds
+
+    def add_matched_item(self, item: IndicatorItem, context: Optional[dict] = None):
+        self.matched_items.append(item)
+        self.item_context[item.id] = context if context is not None else {}
+
+    def add_skipped_items(self, items: IndicatorItem | list[IndicatorItem]):
+        items = items if isinstance(items, list) else [items]
+        self.skipped_items.extend(items)
+
+    def skip_remaining_items(self, items_to_skip: IndicatorItem | list[IndicatorItem]):
+        items = items_to_skip if isinstance(items_to_skip, list) else [items_to_skip]
+        self.skipped_items.extend([i for i in items if i not in self.matched_items])
+
+    def add_error_items(self, items: IndicatorItem | list[IndicatorItem], error_message: str):
+        self.error_items.extend(items if isinstance(items, list) else [items])
+        self.error_logs.append(error_message)
+
+    def add_item_artifact_info(self, item: IndicatorItem, artifact_info: dict):
+        self.artifact_info[item.id] = artifact_info
+
+    def set_lazy_evaluation(self, flag: bool):
+        self.evaluation_mode = 'lazy' if flag else 'eager'
+
+    def merge(self, other: 'ValidationResult'):
+        self.matched_items.extend(other.matched_items)
+        self.skipped_items.extend(other.skipped_items)
+        self.error_items.extend(other.error_items)
+        self.error_logs.extend(other.error_logs)
+        self.artifact_info.update(other.artifact_info)
+        self.execution_duration += other.execution_duration
+
+
+@dataclass
+class IndicatorValidationResult:
+    valid: bool
+    valid_items: list[IndicatorItem] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+    def merge(self, other: 'IndicatorValidationResult'):
+        self.valid = self.valid and other.valid
+        self.valid_items.extend(other.valid_items)
+        self.errors.extend(other.errors)
+        self.warnings.extend(other.warnings)
 

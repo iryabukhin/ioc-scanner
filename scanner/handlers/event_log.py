@@ -4,7 +4,7 @@ from scanner.core import BaseHandler, ConditionValidator
 from scanner.models import (
     IndicatorItem,
     IndicatorItemOperator as Operator,
-    IndicatorItemCondition as Condition
+    IndicatorItemCondition as Condition, ValidationResult
 )
 from scanner.utils import OSType
 from scanner.exceptions import UnsupportedOpenIocTerm
@@ -58,24 +58,42 @@ class EventLogItemHandler(BaseHandler):
             # 'EventLogItem/blob',
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
+        result = ValidationResult()
+
+        result.set_lazy_evaluation(self._lazy_evaluation)
+
         for channel in [self.CHANNEL_APPLICATION, self.CHANNEL_SYSTEM, self.CHANNEL_SECURITY]:
+
             events = self._fetch_events(channel)
-            filter_function = any if operator is Operator.OR else all
-            for event in events:
-                try:
-                    if filter_function([self._validate_single_item(event, i, channel) for i in items]):
-                        return True
-                except Exception as e:
-                    logger.error('\n'.join([
-                        f'An error occurred during validation of item: {str(e)}.',
-                        f'Event data: ' + json.dumps({
-                            **{k: getattr(event, k) for k in dir(event) if not k.startswith('_') and not isinstance(getattr(event, k), bytes)},
-                            **{k: getattr(event, k).Format() for k in dir(event) if k.startswith('Time')}
-                        })
-                    ]))
-                    return False
-        return False
+
+            for item in items:
+                event_matches = []
+                for event in events:
+                    try:
+                        is_matched = self._validate_single_item(event, item, channel)
+                        if is_matched:
+                            result.add_matched_item(item, context={'event': self._format_event_data(event)})
+                            if operator == Operator.OR and self._lazy_evaluation:
+                                result.skip_remaining_items(items)
+                                return result
+
+                    except Exception as e:
+                        error_message = f'An error occurred during validation of item: {str(e)}. Event data: {json.dumps(self._format_event_data(event))}'
+                        logger.error(error_message)
+                        result.add_error_items(item, error_message)
+
+                if operator == operator.AND and all(event_matches):
+                    return result
+
+        return result
+
+    def _format_event_data(self, event) -> dict:
+        return {
+            **{k: getattr(event, k) for k in dir(event) if
+               not k.startswith('_') and not isinstance(getattr(event, k), bytes) and not k.startswith('Time')},
+            **{k: getattr(event, k).Format() for k in dir(event) if k.startswith('Time')}
+        }
 
     def _fetch_events(self, source_name: str | None = None) -> list:
         ret = list()

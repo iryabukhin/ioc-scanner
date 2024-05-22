@@ -8,7 +8,7 @@ from enum import Enum, auto
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler, ConditionValidator
-from scanner.models import IndicatorItem, IndicatorItemOperator as Operator
+from scanner.models import IndicatorItem, IndicatorItemOperator as Operator, ValidationResult
 from scanner.utils import OSType, from_windows_timestamp
 
 from loguru import logger
@@ -106,7 +106,7 @@ class RegistryItemHandler(BaseHandler):
             }
         return registry_values
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
         if not OSType.is_win():
             return False
 
