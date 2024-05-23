@@ -1,5 +1,6 @@
 import argparse
 import csv
+import dataclasses
 import json
 import os
 import sys
@@ -104,15 +105,28 @@ def iocscan(args):
             if not indicators:
                 logger.error('Unable to parse OpenIoC document content.')
                 return
-            matched_iocs = IOCScanner(config).process(indicators)
-            if matched_iocs:
-                logger.info('General result: Valid')
-                valid_ids = [i.id for i in indicators if i.id in matched_iocs]
-                logger.info('Valid indicators IDs: {}', ', '.join(valid_ids))
-            else:
-                logger.warning('General result: Invalid')
+
+            scan_result = IOCScanner(config).process(indicators)
+
     except Exception as e:
-        logger.exception(f'An error occurred while processing the IOC file: {e}')
+        logger.exception(e)
+        errmsg = f'An error occurred while processing the IOC file: {e}'
+        print(errmsg)
+        sys.exit(1)
+
+    if args.format == 'json':
+        output = json.dumps(dataclasses.asdict(scan_result), indent=2)
+        print(output)
+    elif args.format == 'plain':
+        print(f'Result: {scan_result.result}')
+        print(f'Scan duration: {scan_result.result}')
+        print(f'Found matches: ')
+        for match in scan_result.matches:
+            print(f'\t item ID: {match["id"]}')
+            print(f'\t item type: {match["type"]}')
+            print(f'\t match details: ')
+            for k,v in match['match_details']:
+                print(f'\t\t {k}: {v}')
 
 
 def main():
@@ -131,7 +145,7 @@ def main():
     common_args_parser.add_argument(
         '--format',
         choices=['json', 'csv', 'plain'],
-        default='json',
+        default='plain',
         help='Specify the output format (JSON, CSV, or plain).'
     )
 

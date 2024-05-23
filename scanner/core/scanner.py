@@ -54,52 +54,73 @@ class IOCScanner:
                 except Exception as e:
                     logger.error(f'Error loading handler from module {fname}: {e}')
 
-    def process(self, indicators: list[Indicator]) -> list[str]:
+    def process(self, indicators: list[Indicator]) -> OpenIOCScanResult:
+        logger.info(f'Processing a total of {len(indicators)} indicators...')
 
-        logger.info(f'Processing {len(indicators)} indicators...')
+        overall_valid = False
+        matches = []
+        for indicator in indicators:
+            validation_result = self._validate_indicator(indicator)
+            matches.append(
+                {
+                    'id': indicator.id,
+                    'operator': indicator.operator,
+                    'valid_items': [self._build_valid_item_data(i, validation_result) for i in validation_result.valid_items],
+                    'skipped_items': [i.id for i in validation_result.skipped_items]
+                }
+            )
 
-        processed_ids = [i.id for i in indicators if self.validate_indicator(i)]
+        return OpenIOCScanResult(
+            result=overall_valid,
+            matches=matches
+        )
 
-        logger.info(f'Processed indicators. Valid indicators: {len(processed_ids)}')
-
-        return processed_ids
-
-    def validate_indicator(self, indicator: Indicator) -> bool:
-
+    def _validate_indicator(self, indicator: Indicator) -> IndicatorScanResult:
         logger.debug(f'Validating indicator: {indicator.id}')
-
         if not IOCScanner.handlers:
             logger.error('No handlers have been loaded!')
             raise Exception('No handlers have been loaded!')
 
-        valid_child_items = self._validate_indicator_items(indicator)
-        valid_indicators = self._validate_child_indicators(indicator)
+        result = IndicatorScanResult.from_indicator_object(indicator)
 
-        valid_children = valid_indicators + valid_child_items
+        items_validation_result = self._validate_indicator_items(indicator)
+        for item in items_validation_result.matched_items:
+            result.add_valid_item(item)
 
-        result = self._evaluate_logic(valid_children, indicator)
-        logger.debug(f'Indicator {indicator.id} validation result: {result}')
+        for item in items_validation_result.skipped_items:
+            result.add_skipped_item(item)
+
+        for item in items_validation_result.error_items:
+            result.add_error_item(item)
+
+        for item_id, data in items_validation_result.item_context:
+            result.match_data[item_id] = data
+
+        for child in indicator.child_indicators:
+            result.merge(self._validate_indicator(child))
+
+        result.update_valid_status()
+
         return result
 
     def _validate_indicator_items(self, indicator: Indicator) -> ItemsValidationResult:
         logger.debug(f'Validating indicator items for indicator: {indicator.id}')
 
         result = ItemsValidationResult()
-        child_items = [i for i in indicator.items if isinstance(i, IndicatorItem)]
+        child_items = [i for i in indicator.children if isinstance(i, IndicatorItem)]
         if not child_items:
             logger.debug(f'No child items found for indicator {indicator.id}...')
             return result
 
-        valid_items = []
         child_items.sort(key=attrgetter('context.document'))
-        for item_type, grouped_items in itertools.groupby(child_items, key=attrgetter('context.document')):
-            grouped_items = list(grouped_items)
-            unsupported_items = {i.id: i for i in grouped_items if i.context.search not in self.handlers.keys()}
-            supported_items = {i.id: i for i in grouped_items if i.id not in unsupported_items.keys()}
+        for item_type, items in itertools.groupby(child_items, key=attrgetter('context.document')):
+            items = list(items)
+
+            unsupported_items = {i.id: i for i in items if i.context.search not in self.handlers.keys()}
+            supported_items = {i.id: i for i in items if i.id not in unsupported_items.keys()}
 
             result.add_skipped_items(list(unsupported_items.values()))
 
-            # TODO: Need to re-structure this chunk of code. Perhaps handlers should only provide the type of indicator they support?
             items = list(supported_items.values())
             handler = self.handlers.get(items[0].context.search, None)
             validation_result = handler.validate(items, indicator.operator)
@@ -109,22 +130,18 @@ class IOCScanner:
 
         return result
 
-    def _validate_child_indicators(self, indicator: Indicator) -> list[Indicator]:
-        logger.debug(f'Validating child indicators for indicator: {indicator.id}')
-        children = [i for i in indicator.items if isinstance(i, Indicator)]
-        if len(children) == 0:
-            logger.debug(f'No child indicators found for indicator {indicator.id}...')
-            return []
-
-        valid_children = [i for i in children if self.validate_indicator(i)]
-        logger.debug(f'Valid child indicators count for indicator {indicator.id}: {len(valid_children)} out of {len(children)}')
-        return valid_children
-
     def _evaluate_logic(self, valid_children: list[IndicatorItem | Indicator], indicator: Indicator) -> bool:
         logger.debug(f'Evaluating logic for indicator: {indicator.id}')
         if indicator.operator is Operator.OR:
             result = bool(valid_children)
         else:
-            result = len(valid_children) == len(indicator.items)
+            result = len(valid_children) == len(indicator.children)
         logger.debug(f'Logic evaluation result for indicator {indicator.id}: {result}')
         return result
+
+    def _build_valid_item_data(self, item: IndicatorItem, validation_result: IndicatorScanResult):
+        return {
+            'id': item.id,
+            'type': item.context.search,
+            'match_details': validation_result.match_data.get(item.id, dict())
+        }

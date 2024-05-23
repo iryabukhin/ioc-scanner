@@ -46,7 +46,7 @@ class ServiceItemHandler(BaseHandler):
         config = self.config.get('service_item', {})
         self._scan_executable_signature = config.get('scan_executable_signature') or False
         self._scan_dlls = config.get('scan_dlls') or False
-        self._scan_dll_signatures = config.get('scan_dll_signatures') or False
+        self._scan_dll_signatures = self._scan_dlls and config.get('scan_dll_signatures', False)
 
     @staticmethod
     def get_supported_terms() -> list[str]:
@@ -121,9 +121,9 @@ class ServiceItemHandler(BaseHandler):
 
     def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
         result = ValidationResult()
-        if not OSType.is_win():
-            # TODO: Figure out what we should do with Windows-only OpenIoC terms
-            return True
+        # TODO: Figure out what we should do with Windows-only OpenIoC terms
+
+        self._update_scan_flags(items)
 
         if not self._service_cache:
             self._populate_cache()
@@ -243,7 +243,7 @@ class ServiceItemHandler(BaseHandler):
         # we need to call lower() because system32 dir name is sometimes uppercased
         return srvc_binpath.lower().startswith(svchost_path.lower())
 
-    def _get_service_executable_hash(self, binary_path: str) ->  dict[str, str]:
+    def _get_service_executable_hash(self, binary_path: str) -> dict[str, str]:
         result = {
             'pathmd5sum': '',
             'pathsha1sum': '',
@@ -266,6 +266,10 @@ class ServiceItemHandler(BaseHandler):
         if not self._service_cache:
             self._populate_cache()
         return self._service_cache
+
+    def _update_scan_flags(self, items: list[IndicatorItem]) -> None:
+        self._scan_executable_signature = any(i for i in items if 'sum' in i.term.lower())
+        self._scan_dlls = any(i for i in items if 'dll' in i.term.lower())
 
 
 def init(config: ConfigObject):

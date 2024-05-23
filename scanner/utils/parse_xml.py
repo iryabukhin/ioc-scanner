@@ -55,7 +55,7 @@ class OpenIOCXMLParser:
             id=current_indicator_id,
             operator=IndicatorItemOperator(indicator_node.getAttribute('operator')),
             level=level,
-            items=items,
+            children=items,
             parent_id=parent_id
         )
 

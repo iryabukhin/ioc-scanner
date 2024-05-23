@@ -14,7 +14,7 @@ shutdown_event = threading.Event()
 
 def create_app(config: ConfigObject, start_task_runner: bool = False):
     config = config.get('agent', {})
-    app = Flask(__name__)
+    app = Flask(__name__, instance_relative_config=False)
     app.config.from_mapping(config)
 
     db.init_app(app)

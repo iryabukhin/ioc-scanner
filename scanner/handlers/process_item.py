@@ -69,7 +69,7 @@ class ProcessItemHandler(BaseHandler):
 
         def add_to_data(data, path, items):
             for item in items:
-                for key, value in item.items():
+                for key, value in item.children():
                     key = f'ProcessItem/{path}/{key}'
                     data.setdefault(key, []).append(value)
 

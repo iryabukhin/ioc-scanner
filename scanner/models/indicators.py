@@ -65,8 +65,16 @@ class Indicator:
     id: str
     operator: IndicatorItemOperator
     level: int
-    items: list[Union['Indicator', IndicatorItem]]
+    children: list[Union['Indicator', IndicatorItem]]
     parent_id: str | None = field(default=None)
+
+    @cached_property
+    def child_items(self) -> list[IndicatorItem]:
+        return [i for i in self.children if isinstance(i, IndicatorItem)]
+
+    @cached_property
+    def child_indicators(self) -> list['Indicator']:
+        return [i for i in self.children if isinstance(i, Indicator)]
 
 
 @dataclass
@@ -82,7 +90,6 @@ class ValidationResult:
     item_context: dict[str, dict] = field(default_factory=dict)
     artifact_info: dict[str, dict] = field(default_factory=dict)
 
-    execution_duration: Optional[int] = None  # duration in seconds
 
     def add_matched_item(self, item: IndicatorItem, context: Optional[dict] = None):
         self.matched_items.append(item)
@@ -112,7 +119,6 @@ class ValidationResult:
         self.error_items.extend(other.error_items)
         self.error_logs.extend(other.error_logs)
         self.artifact_info.update(other.artifact_info)
-        self.execution_duration += other.execution_duration
 
 
 @dataclass

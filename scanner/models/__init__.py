@@ -3,4 +3,4 @@ from .indicators import Indicator, \
     IndicatorItemContent, IndicatorItemCondition, \
     ValidationResult
 
-from .scan_result import IndicatorScanResult, OpenIOCScanResult, ValidItem
+from .scan_result import IndicatorScanResult, OpenIOCScanResult

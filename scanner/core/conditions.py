@@ -37,7 +37,7 @@ class ConditionValidator:
             content_value = content_value.lower()
 
         if item.term in ['FilePath', 'FullPath']:
-            value_to_check = os.path.expandvars(value_to_check)
+            content_value = os.path.expandvars(value_to_check)
 
         if content_type == 'date':
             for var in ['value_to_check', 'content_value']:

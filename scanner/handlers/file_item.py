@@ -133,11 +133,15 @@ class FileItemHandler(BaseHandler):
             i['FullPath']: i for i in self._recursive_scan(root)
         }
 
-    def _recursive_scan(self, root: str) -> list[dict]:
+    def _recursive_scan(self, root: str):
         logger.debug(f'Begin scanning root path "{root}" ...')
         if not os.path.exists(root):
             logger.warning(f'Path {root} does not exist, aborting scan...')
-            return []
+            return
+
+        if os.path.isfile(root) and self._should_process_file(root):
+            yield self._build_file_info(root)
+            return
 
         for rootdir, dirs, files in os.walk(root, topdown=True, followlinks=False):
             dirs[:] = [d for d in dirs if not self._should_skip(os.path.join(rootdir, d))]
