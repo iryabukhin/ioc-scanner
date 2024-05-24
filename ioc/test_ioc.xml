@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<OpenIOC xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+         xmlns="http://openioc.org/schemas/OpenIOC_1.1"
+         id="ba6313c3-e357-4d2e-9806-759c89e0e359"
+         last-modified="2015-02-12T22:15:02" published-date="0001-01-01T00:00:00">
+    <metadata>
+    </metadata>
+    <criteria>
+        <Indicator id="top-level-indicator" operator="AND">
+            <IndicatorItem id="file-path-item" condition="is" preserve-case="false" negate="false">
+                <Context document="FileItem" search="FileItem/FullPath" type="mir" />
+                <Content type="string">%USERPROFILE%\trid.exe</Content>
+            </IndicatorItem>
+            <Indicator id="service-item-indicator" operator="AND">
+                <IndicatorItem id="service-item-1" condition="contains" preserve-case="false" negate="false">
+                    <Context document="ServiceItem" search="ServiceItem/name" type="mir" />
+                    <Content type="string">wghttp</Content>
+                </IndicatorItem>
+            </Indicator>
+            <Indicator id="unsupported-item-indicator" operator="AND">
+                <IndicatorItem id="unsupported-item-1" condition="contains" preserve-case="false" negate="false">
+                    <Context document="SomeTotallyNonExistentItem"
+                             search="SomeTotallyNonExistentItem/NothingInParticular" type="mir" />
+                    <Content type="string">test</Content>
+                </IndicatorItem>
+                <IndicatorItem id="unsupported-item-2" condition="matches" preserve-case="false" negate="true">
+                    <Context document="SomeTotallyNonExistentItem"
+                             search="SomeTotallyNonExistentItem/NothingInParticular" type="mir"/>
+                    <Content type="int">1</Content>
+                </IndicatorItem>
+            </Indicator>
+        </Indicator>
+<!--            <IndicatorItem id="file-hash" condition="is" preserve-case="false" negate="false">-->
+<!--                <Context document="FileItem" search="FileItem/Sha1sum" type="mir" />-->
+<!--                <Content type="string">AACC81FE416AC3108982966206B4682EC582167E</Content>-->
+<!--            </IndicatorItem>-->
+<!--                <IndicatorItem id="browser-history-item" condition="contains" preserve-case="false" negate="false">-->
+<!--                    <Context document="UrlHistoryItem" search="UrlHistoryItem/HostName" type="mir" />-->
+<!--                    <Content type="string">ozon.ru</Content>-->
+<!--                </IndicatorItem>-->
+<!--                 <IndicatorItem id="browser-history-item" condition="contains" preserve-case="false" negate="false">-->
+<!--                    <Context document="UrlHistoryItem" search="UrlHistoryItem/BrowserName" type="mir" />-->
+<!--                    <Content type="string">Edge</Content>-->
+<!--                </IndicatorItem>-->
+<!--            <IndicatorItem id="bbf42860-8064-469f-a1a7-746f29634cf2" condition="is" preserve-case="false" negate="false">-->
+<!--                <Context document="RegistryItem" search="RegistryItem/Hive" type="mir"/>-->
+<!--                <Content type="string">HKEY_CURRENT_USER</Content>-->
+<!--            </IndicatorItem>-->
+<!--            <IndicatorItem id="key-name-item" condition="contains" preserve-case="false" negate="false">-->
+<!--                <Context document="RegistryItem" search="RegistryItem/Path" type="mir"/>-->
+<!--                <Content type="string">Environment</Content>-->
+<!--            </IndicatorItem>-->
+<!--            <IndicatorItem id="e05524e8-38ed-41e7-8535-2436d6284a33" condition="contains" preserve-case="false" negate="false">-->
+<!--                <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>-->
+<!--                <Content type="string">GOPATH</Content>-->
+<!--            </IndicatorItem>-->
+        <!--            <Indicator id="833a2af3-0173-4295-a5b4-b97143f2ebc6" operator="AND">-->
+        <!--                <IndicatorItem id="bbf42860-8064-469f-a1a7-746f29634cf2" condition="is" preserve-case="false" negate="false">-->
+        <!--                    <Context document="RegistryItem" search="RegistryItem/KeyPath" type="mir"/>-->
+        <!--                    <Content type="string">HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion</Content>-->
+        <!--                </IndicatorItem>-->
+        <!--                <IndicatorItem id="ajsdhlakjdlakjsdkl" condition="contains" preserve-case="false" negate="false">-->
+        <!--                    <Context document="RegistryItem" search="RegistryItem/ValueName" type="mir"/>-->
+        <!--                    <Content type="string">ProductName</Content>-->
+        <!--                </IndicatorItem>-->
+        <!--                <IndicatorItem id="test-id=123" condition="matches" preserve-case="false" negate="false">-->
+        <!--                    <Context document="RegistryItem" search="RegistryItem/Value" type="mir"/>-->
+        <!--                    <Content type="string">^windows\s(\d{1,3})\s.*?$</Content>-->
+        <!--                </IndicatorItem>-->
+        <!--            </Indicator>-->
+        <!--            <Indicator id="process-item-indicator" operator="AND">-->
+        <!--              <IndicatorItem id="process-item-1" condition="contains" preserve-case="false" negate="false">-->
+        <!--                <Context document="ProcessItem" search="ProcessItem/name" type="mir" />-->
+        <!--                <Content type="string">greenshot.exe</Content>-->
+        <!--              </IndicatorItem>-->
+        <!--            </Indicator>-->
+        <!--            <Indicator id="7eb009b2-aa52-4553-8f96-d6ab93a504d3" operator="AND">-->
+        <!--                <IndicatorItem id="35dc6746-f204-45ba-ae7e-71fd98b65f4e" condition="contains" preserve-case="false" negate="false">-->
+        <!--                    <Context document="ServiceItem" search="ServiceItem/name" type="mir"/>-->
+        <!--                    <Content type="string">wghttp</Content>-->
+        <!--                </IndicatorItem>-->
+        <!--                <IndicatorItem id="d0ca54fa-8120-4401-a438-d892ef62a465" condition="contains" preserve-case="false" negate="false">-->
+        <!--                    <Context document="ServiceItem" search="ServiceItem/name" type="mir"/>-->
+        <!--                    <Content type="string">PlugPlayCM</Content>-->
+        <!--                </IndicatorItem>-->
+        <!--            </Indicator>-->
+    </criteria>
+    <parameters/>
+</OpenIOC>
