@@ -1,5 +1,6 @@
 
 from dataclasses import dataclass, field
+from dataclasses_json import dataclass_json
 from datetime import datetime
 from functools import cached_property
 from enum import Enum, auto
@@ -20,18 +21,20 @@ class IndicatorItemCondition(Enum):
     LESS_THAN = 'less-than'
 
 
+@dataclass_json()
 @dataclass(frozen=True)
 class IndicatorItemContext:
     document: str
     search: str
     type: str
 
+@dataclass_json()
 @dataclass(frozen=True)
 class IndicatorItemContent:
     type: str
     content: str
 
-
+@dataclass_json
 @dataclass(frozen=True)
 class IndicatorItem:
 
@@ -60,6 +63,7 @@ class IndicatorItem:
         return len(terms) > 1
 
 
+@dataclass_json
 @dataclass(frozen=True)
 class Indicator:
     id: str
@@ -77,6 +81,7 @@ class Indicator:
         return [i for i in self.children if isinstance(i, Indicator)]
 
 
+@dataclass_json
 @dataclass
 class ValidationResult:
     matched_items: list[IndicatorItem] = field(default_factory=list)
@@ -119,8 +124,10 @@ class ValidationResult:
         self.error_items.extend(other.error_items)
         self.error_logs.extend(other.error_logs)
         self.artifact_info.update(other.artifact_info)
+        self.item_context.update(other.item_context)
 
 
+@dataclass_json()
 @dataclass
 class IndicatorValidationResult:
     valid: bool

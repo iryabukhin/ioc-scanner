@@ -1,7 +1,9 @@
 import importlib
 import itertools
 import os
+import timeit
 from operator import attrgetter
+from typing import Optional
 
 from loguru import logger
 
@@ -54,36 +56,45 @@ class IOCScanner:
                 except Exception as e:
                     logger.error(f'Error loading handler from module {fname}: {e}')
 
-    def process(self, indicators: list[Indicator]) -> OpenIOCScanResult:
+    def process(self, indicators: list[Indicator], operator: Operator = Operator.AND) -> OpenIOCScanResult:
         logger.info(f'Processing a total of {len(indicators)} indicators...')
 
-        overall_valid = False
+        start_time = timeit.default_timer()
+
+        valid_ids = []
         matches = []
         for indicator in indicators:
             validation_result = self._validate_indicator(indicator)
-            matches.append(
-                {
-                    'id': indicator.id,
-                    'operator': indicator.operator,
-                    'valid_items': [self._build_valid_item_data(i, validation_result) for i in validation_result.valid_items],
-                    'skipped_items': [i.id for i in validation_result.skipped_items]
-                }
-            )
+            valid_ids.append(indicator.id)
+            matches.append({
+                'id': indicator.id,
+                'operator': indicator.operator,
+                'skipped_items': [i.id for i in validation_result.skipped_items],
+                'valid_items': [self._build_valid_item_data(i, validation_result) for i in
+                                validation_result.valid_items],
+                'child_results': [self._build_child_result(child_result) for child_result in
+                                  validation_result.child_results],
+            })
 
+        overall_valid = len(valid_ids) > 0 if operator == Operator.OR \
+            else len(valid_ids) == len(indicators) and all(indicator.id in valid_ids for indicator in indicators)
+
+        elapsed = timeit.default_timer() - start_time
         return OpenIOCScanResult(
             result=overall_valid,
-            matches=matches
+            matches=matches,
+            scan_duration=elapsed
         )
 
-    def _validate_indicator(self, indicator: Indicator) -> IndicatorScanResult:
-        logger.debug(f'Validating indicator: {indicator.id}')
+    def _validate_indicator(self, i: Indicator) -> IndicatorScanResult:
+        logger.debug(f'Validating indicator: {i.id}')
         if not IOCScanner.handlers:
             logger.error('No handlers have been loaded!')
             raise Exception('No handlers have been loaded!')
 
-        result = IndicatorScanResult.from_indicator_object(indicator)
+        result = IndicatorScanResult.from_indicator_object(i)
 
-        items_validation_result = self._validate_indicator_items(indicator)
+        items_validation_result = self._validate_indicator_items(i)
         for item in items_validation_result.matched_items:
             result.add_valid_item(item)
 
@@ -93,11 +104,12 @@ class IOCScanner:
         for item in items_validation_result.error_items:
             result.add_error_item(item)
 
-        for item_id, data in items_validation_result.item_context:
+        for item_id, data in items_validation_result.item_context.items():
             result.match_data[item_id] = data
 
-        for child in indicator.child_indicators:
-            result.merge(self._validate_indicator(child))
+        for child in i.child_indicators:
+            child_result = self._validate_indicator(child)
+            result.add_child_result(child_result)
 
         result.update_valid_status()
 
@@ -107,8 +119,8 @@ class IOCScanner:
         logger.debug(f'Validating indicator items for indicator: {indicator.id}')
 
         result = ItemsValidationResult()
-        child_items = [i for i in indicator.children if isinstance(i, IndicatorItem)]
-        if not child_items:
+        child_items = indicator.child_items
+        if not indicator.child_items:
             logger.debug(f'No child items found for indicator {indicator.id}...')
             return result
 
@@ -122,6 +134,9 @@ class IOCScanner:
             result.add_skipped_items(list(unsupported_items.values()))
 
             items = list(supported_items.values())
+            if len(items) == 0:
+                continue
+
             handler = self.handlers.get(items[0].context.search, None)
             validation_result = handler.validate(items, indicator.operator)
             result.merge(validation_result)
@@ -138,6 +153,15 @@ class IOCScanner:
             result = len(valid_children) == len(indicator.children)
         logger.debug(f'Logic evaluation result for indicator {indicator.id}: {result}')
         return result
+
+    def _build_child_result(self, child_result: IndicatorScanResult) -> dict:
+        return {
+            'id': child_result.id,
+            'operator': child_result.operator,
+            'valid_items': [self._build_valid_item_data(i, child_result) for i in child_result.valid_items],
+            'skipped_items': [i.id for i in child_result.skipped_items],
+            'child_results': [self._build_child_result(cr) for cr in child_result.child_results]
+        }
 
     def _build_valid_item_data(self, item: IndicatorItem, validation_result: IndicatorScanResult):
         return {

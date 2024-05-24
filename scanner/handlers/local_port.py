@@ -32,7 +32,7 @@ class LocalPortHandler(BaseHandler):
             'PortItem/state'
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         result = ValidationResult()
         result.set_lazy_evaluation(self._lazy_evaluation)
 

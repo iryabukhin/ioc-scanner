@@ -10,6 +10,7 @@ import psutil
 
 from scanner.core import IOCScanner
 from scanner.config import ConfigManager, YamlConfigLoader, JsonConfigLoader
+from scanner.models import OpenIOCScanResult, IndicatorScanResult
 from scanner.yara import YaraScanner, SourceType
 from scanner.utils import OpenIOCXMLParser
 
@@ -86,6 +87,35 @@ def yara_scan(args):
                     print(f'\t {str(i+1)}: {string}')
 
 
+def print_recursive_dict(d: dict, prefix: str):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            print(f'{prefix}{k}:')
+            print_recursive_dict(v, prefix + '  ')
+        else:
+            print(f'{prefix}{k}: {v}')
+
+def print_indicator_matches(matches: list[dict], indent=0):
+    prefix = '    ' * indent
+    for match in matches:
+
+        print(f'{prefix}Indicator ID: {match["id"]}')
+        print(f'{prefix}Operator: {str(match["operator"])}')
+        print(f'{prefix}Skipped items: {match["skipped_items"]}')
+
+        if len(match['valid_items']) > 0:
+            print(f'{prefix}Valid items: ')
+            for item in match['valid_items']:
+                print(f'{prefix*2}Item ID: {item["id"]}')
+                print(f'{prefix*2}Item type: {item["type"]}')
+                if item.get('match_details') is not None and len(item.get('match_details')) > 0:
+                    print(f'{prefix*2}Match details: ')
+                    print_recursive_dict(item['match_details'], prefix*2)
+
+        if match.get('child_results') and len(match['child_results']) > 0:
+            print_indicator_matches(match['child_results'], indent + 1)
+
+
 def iocscan(args):
 
     try:
@@ -115,18 +145,13 @@ def iocscan(args):
         sys.exit(1)
 
     if args.format == 'json':
-        output = json.dumps(dataclasses.asdict(scan_result), indent=2)
+        output = scan_result.to_json(indent=4)
         print(output)
     elif args.format == 'plain':
-        print(f'Result: {scan_result.result}')
-        print(f'Scan duration: {scan_result.result}')
+        print(f'General result: {scan_result.result}')
+        print(f'Scan duration: {str(scan_result.scan_duration)}')
         print(f'Found matches: ')
-        for match in scan_result.matches:
-            print(f'\t item ID: {match["id"]}')
-            print(f'\t item type: {match["type"]}')
-            print(f'\t match details: ')
-            for k,v in match['match_details']:
-                print(f'\t\t {k}: {v}')
+        print_indicator_matches(scan_result.matches, indent=1)
 
 
 def main():

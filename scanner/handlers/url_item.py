@@ -38,22 +38,22 @@ class UrlItemHandler(BaseHandler):
             # 'UrlHistoryItem/IndexedContent'
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         result = ValidationResult()
         result.set_lazy_evaluation(self._lazy_evaluation)
 
         if not self._cache:
             self._fill_cache()
 
-        valid_items = set()
         for url, url_data in self._cache.items():
             for item in items:
                 value = url_data.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
                     result.add_matched_item(item)
                     if operator == Operator.OR and self._lazy_evaluation:
-                        return True
-        return operator == Operator.AND and len(valid_items) == len(items)
+                        return result
+
+        return result
 
     def _fill_cache(self):
         for browser_class in browser_history.utils.get_browsers():

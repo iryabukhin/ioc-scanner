@@ -20,5 +20,5 @@ class BaseHandler:
 
 
     @abc.abstractmethod
-    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: IndicatorItemOperator) -> ValidationResult:
         raise NotImplementedError

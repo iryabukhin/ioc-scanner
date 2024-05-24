@@ -38,7 +38,7 @@ class PrefetchItemHandler(BaseHandler):
             'PrefetchItem/VolumeList/VolumeItem/SerialNumber',
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         result = ValidationResult()
         result.set_lazy_evaluation(self._lazy_evaluation)
 

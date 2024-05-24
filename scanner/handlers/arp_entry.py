@@ -34,7 +34,7 @@ class ArpEntryHandler(BaseHandler):
             # 'ArpEntryItem/LastUnreachable',
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         result = ValidationResult()
         for item in items:
             matched = self._find_matched_arp_entries(item)

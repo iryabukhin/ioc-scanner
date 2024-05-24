@@ -106,7 +106,7 @@ class RegistryItemHandler(BaseHandler):
             }
         return registry_values
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         if not OSType.is_win():
             return False
 

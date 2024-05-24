@@ -1,3 +1,4 @@
+import json
 import pickle
 import uuid
 import io
@@ -74,7 +75,12 @@ def create_task():
 @views_blueprint.route('/tasks/<int:task_id>', methods=['GET'])
 def get_task_status(task_id: int):
     task = Task.query.get_or_404(task_id)
-    return jsonify(task.to_dict())
+    scan_result = task.additional_data
+    try:
+        response = json.loads(scan_result)
+    except json.decoder.JSONDecodeError:
+        response = task.to_dict()
+    return success(response)
 
 
 @views_blueprint.route('/yara/rules', methods=['GET'])

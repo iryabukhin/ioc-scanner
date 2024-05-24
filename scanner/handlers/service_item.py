@@ -119,7 +119,7 @@ class ServiceItemHandler(BaseHandler):
             return None
         return ' '.join(parts[1:])
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         result = ValidationResult()
         # TODO: Figure out what we should do with Windows-only OpenIoC terms
 

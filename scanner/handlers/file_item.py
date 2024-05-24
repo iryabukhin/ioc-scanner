@@ -88,7 +88,7 @@ class FileItemHandler(BaseHandler):
         hashes = get_file_digest(full_path, 'md5', 'sha1', 'sha256')
         return {f'{n.title()}sum': h for n, h in hashes.items()}
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         result = ValidationResult()
 
         result.set_lazy_evaluation(self._lazy_evaluation)

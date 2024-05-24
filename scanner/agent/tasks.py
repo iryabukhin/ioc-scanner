@@ -14,12 +14,12 @@ from .models import Task
 
 from scanner.config import ConfigObject
 from scanner.core import IOCScanner
-from scanner.models import Indicator
+from scanner.models import Indicator, OpenIOCScanResult
 
 from loguru import logger
 
 
-def process_task(indicators: list[Indicator], config: ConfigObject) -> list[str]:
+def process_task(indicators: list[Indicator], config: ConfigObject) -> OpenIOCScanResult:
     logger.remove()
     logger.add(sink=f'task_runner_{"_".join([i.id for i in indicators if i.level == 1])}.log')
     with logger.contextualize(thread_id=threading.get_native_id(), task='openioc'):
@@ -66,11 +66,11 @@ def task_runner(config: ConfigObject, db_uri: str = None):
                     }
                     for future in as_completed(futures_to_task):
                         try:
-                            valid_indicators = future.result()
+                            scan_result: OpenIOCScanResult = future.result()
                             task = futures_to_task[future]
                             task.status = 'completed'
                             task.progress = 100
-                            task.additional_data = json.dumps(valid_indicators)
+                            task.additional_data = scan_result.to_json()
                         except Exception as e:
                             task.status = 'error'
                             task.progress = 0

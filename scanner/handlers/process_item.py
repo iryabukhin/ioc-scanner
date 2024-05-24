@@ -48,7 +48,7 @@ class ProcessItemHandler(BaseHandler):
             'ProcessItem/HandleList/Handle/Sha256sum',
         ]
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         valid_items = set()
         for pid, process_data in self._get_process_info().items():
             for item in items:

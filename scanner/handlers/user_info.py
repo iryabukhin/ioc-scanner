@@ -55,9 +55,10 @@ class UserItemHandler(BaseHandler):
             logger.error(f"Exception occurred while fetching user info for {username}: {str(e)}")
         return {}
 
-    def validate(self, items: list[IndicatorItem], operator: Operator) -> bool | ValidationResult:
+    def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
+        result = ValidationResult()
         if not items:
-            return False
+            return result
 
         username_item = next((item for item in items if item.context.search.endswith('Username')), None)
         if not username_item:
