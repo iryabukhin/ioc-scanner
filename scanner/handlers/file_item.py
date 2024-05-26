@@ -1,5 +1,8 @@
+import hashlib
 import os
 import stat
+from concurrent.futures import ThreadPoolExecutor
+
 import psutil
 
 from datetime import datetime, timezone
@@ -11,8 +14,8 @@ from scanner.models import (
     IndicatorItemOperator as Operator,
     IndicatorItemCondition as Condition, ValidationResult
 )
-from scanner.utils import OSType
-from scanner.utils.hash import get_file_digest
+from scanner.utils import OSType, flatten_dict
+from scanner.utils.hash import get_file_digest, calculate_hash
 
 if OSType.is_win():
     import pefile
@@ -47,8 +50,8 @@ class FileItemHandler(BaseHandler):
         config = self.config.get('file_item', {})
         self._scan_file_hash = config.get('scan_file_hash', True)
         self._scan_all_drives = config.get('scan_all_drives', False)
+        self._scan_pe_info: bool = False
         self._max_file_size = config.get('max_file_size_mb', self.MAX_FILE_SIZE_MB)
-
         self.file_cache = dict()
 
     @staticmethod
@@ -65,6 +68,37 @@ class FileItemHandler(BaseHandler):
             'FileItem/Created',
             'FileItem/Modified',
             'FileItem/Accessed',
+            'FileItem/PEInfo/Type',
+            'FileItem/PEInfo/Subsystem',
+            'FileItem/PEInfo/BaseAddress',
+            'FileItem/PEInfo/PETimeStamp',
+            'FileItem/PEInfo/Sections/NumberOfSections',
+            'FileItem/PEInfo/Sections/ActualNumberOfSections',
+            'FileItem/PEInfo/Sections/Section/Name',
+            'FileItem/PEInfo/Sections/Section/Type',
+            'FileItem/PEInfo/Sections/Section/SizeInBytes',
+            'FileItem/PEInfo/Sections/Section/DetectedCharacteristics',
+            'FileItem/PEInfo/Sections/Section/Entropy/AverageValue',
+            'FileItem/PEInfo/DetectedEntryPointSignature/Name',
+            'FileItem/PEInfo/DetectedEntryPointSignature/Type',
+            'FileItem/PEInfo/ImportedModules/Module/Name',
+            'FileItem/PEInfo/ImportedModules/Module/NumberOfFunctions',
+            'FileItem/PEInfo/ImportedModules/Module/ImportedFunctions/string',
+            'FileItem/PEInfo/Exports/ExportsTimeStamp',
+            'FileItem/PEInfo/Exports/NumberOfFunctions',
+            'FileItem/PEInfo/Exports/NumberOfNames',
+            'FileItem/PEInfo/Exports/DllName',
+            'FileItem/PEInfo/Exports/ExportedFunctions/string',
+            'FileItem/PEInfo/DetectedAnomalies/string',
+            'FileItem/PEInfo/Sections/Section/DetectedSignatureKeys/string',
+            'FileItem/PEInfo/EpJumpCodes/Depth',
+            'FileItem/PEInfo/EpJumpCodes/Opcodes',
+            'FileItem/PEInfo/DigitalSignature/SignatureExists',
+            'FileItem/PEInfo/DigitalSignature/SignatureVerified',
+            'FileItem/PEInfo/DigitalSignature/Description',
+            'FileItem/PEInfo/DigitalSignature/CertificateIssuer',
+            'FileItem/PEInfo/DigitalSignature/CertificateSubject',
+            'FileItem/PEInfo/DigitalSignature/CertificateChain',
         ]
 
     def _build_file_info(self, full_path: str) -> dict:
@@ -80,7 +114,15 @@ class FileItemHandler(BaseHandler):
         }
 
         if self._scan_file_hash:
-            result.update(self._calculate_file_hashes(full_path))
+            with ThreadPoolExecutor() as executor:
+                hashes = executor.map(
+                    lambda h: (h, calculate_hash(full_path, getattr(hashlib, h))),
+                    ['md5', 'sha1', 'sha256']
+                )
+                result.update({f'{n.title()}sum': h for n, h in hashes})
+
+        if self._scan_pe_info and self._is_pe_file(full_path):
+            result.update(self._build_pe_info(full_path))
 
         return result
 
@@ -93,7 +135,7 @@ class FileItemHandler(BaseHandler):
 
         result.set_lazy_evaluation(self._lazy_evaluation)
 
-        self._update_scan_file_hash_preference(items)
+        self._update_scan_settings(items)
         fullpath_item = next((i for i in items if i.context.search == 'FileItem/FullPath'), None)
         if fullpath_item is not None and operator is Operator.AND:
             path = fullpath_item.content.content
@@ -186,14 +228,14 @@ class FileItemHandler(BaseHandler):
             return False
         return True
 
-    def _update_scan_file_hash_preference(self, items: list[IndicatorItem]) -> None:
+    def _update_scan_settings(self, items: list[IndicatorItem]) -> None:
         hash_terms = {'Md5sum', 'Sha1sum', 'Sha256sum'}
         # Check if any item requires hash calculation
         self._scan_file_hash = any(item.term in hash_terms for item in items)
+        self._scan_pe_info = any(i.context.search.startswith('FileItem/PEInfo') for i in items)
 
     def _build_pe_info(self, full_path: str) -> dict:
         try:
-
             logger.debug(f'Begin processing PE info for file "{full_path}" ...')
             try:
                 exe = pefile.PE(full_path)
@@ -202,41 +244,79 @@ class FileItemHandler(BaseHandler):
                 return {}
 
             info = {
+                'Type': self._get_pe_type(exe),
+                'Subsystem': self._get_pe_subsystem(exe),
                 'BaseAddress': hex(exe.OPTIONAL_HEADER.ImageBase),
-                'PETimeStamp': datetime.utcfromtimestamp(exe.FILE_HEADER.TimeDateStamp),
-                'Subsystem': exe.OPTIONAL_HEADER.Subsystem,
+                'PETimeStamp': datetime.utcfromtimestamp(exe.FILE_HEADER.TimeDateStamp).strftime('%Y-%m-%d %H:%M:%S'),
                 'NumberOfSections': exe.FILE_HEADER.NumberOfSections,
                 'Sections': [{
                     'Name': section.Name.decode().rstrip('\x00'),
-                    'SizeInBytes': section.SizeOfRawData
-                } for section in exe.sections
-                ],
-                # Additional fields to be added here
+                    'SizeInBytes': section.SizeOfRawData,
+                    'Entropy/AverageValue': section.get_entropy()
+                } for section in exe.sections],
             }
 
-            # Example for handling digital signatures (simplified, real-world usage might require more detailed checks)
             if hasattr(exe, 'DIRECTORY_ENTRY_SECURITY'):
                 info['DigitalSignature'] = {'SignatureExists': True}
-                # Further processing required to verify signature and extract certificate details
             else:
                 info['DigitalSignature'] = {'SignatureExists': False}
 
-            # Example for handling exports
             if hasattr(exe, 'DIRECTORY_ENTRY_EXPORT'):
                 exports = exe.DIRECTORY_ENTRY_EXPORT
                 info['Exports'] = {
                     'DllName': exports.name.decode(),
                     'NumberOfFunctions': exports.struct.NumberOfFunctions,
                     'NumberOfNames': exports.struct.NumberOfNames,
-                    # Additional fields to be added here
+                    'ExportedFunctions': [f.name.decode() for f in exports.symbols if f.name]
                 }
 
-            # Additional PE information extraction logic goes here
+            if hasattr(exe, 'DIRECTORY_ENTRY_IMPORT'):
+                info['Imports'] = [{
+                    'DLL': imp.dll.decode(),
+                    'Functions': [
+                        entry.name.decode() if entry.name else 'ordinal' + str(entry.ordinal) for entry in imp.imports
+                    ]
+                } for imp in exe.DIRECTORY_ENTRY_IMPORT]
 
-            return info
+            if hasattr(exe, 'FileInfo'):
+                info['VersionInfo'] = {}
+                for fileinfo in exe.FileInfo:
+                    if fileinfo.Key == b'StringFileInfo':
+                        for st in fileinfo.StringTable:
+                            for k, v in st.entries.items():
+                                info['VersionInfo'][k.decode()] = v.decode()
+
+            return flatten_dict(info)
         except Exception as e:
             logger.error(f'Error processing PE file {full_path}: {e}')
             return {}
+
+    def _is_pe_file(self, full_path: str) -> bool:
+        try:
+            with open(full_path, 'rb') as file:
+                header = file.read(2)
+                if header != b'MZ':
+                    return False
+                file.seek(0x3C)
+                pe_offset = int.from_bytes(file.read(4), 'little')
+                file.seek(pe_offset)
+                pe_header = file.read(4)
+                return pe_header == b'PE\x00\x00'
+        except Exception:
+            return False
+
+    def _get_pe_type(self, exe: pefile.PE) -> str:
+        if exe.is_dll():
+            return 'DLL'
+        elif exe.is_exe():
+            return 'EXE'
+        elif exe.is_driver():
+            return 'SYS'
+        else:
+            return 'UNKNOWN'
+
+    def _get_pe_subsystem(self, exe: pefile.PE) -> str:
+        return pefile.SUBSYSTEM_TYPE[exe.OPTIONAL_HEADER.Subsystem]
 
 
 def init(config: ConfigObject):
