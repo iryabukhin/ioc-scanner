@@ -1,16 +1,16 @@
 import argparse
 import csv
-import dataclasses
 import json
+import logging.handlers
 import os
+import socket
 import sys
-from typing import io
+import io
 
 import psutil
 
 from scanner.core import IOCScanner
 from scanner.config import ConfigManager, YamlConfigLoader, JsonConfigLoader
-from scanner.models import OpenIOCScanResult, IndicatorScanResult
 from scanner.yara import YaraScanner, SourceType
 from scanner.utils import OpenIOCXMLParser
 
@@ -27,15 +27,26 @@ def load_configuration(config_path: str):
         raise ValueError('Unsupported configuration file format. Please use JSON or YAML.')
     return config_manager.load_config()
 
-def configure_logger(verbosity: int):
+def configure_logger(args):
     level = {
         0: 'ERROR',
         1: 'WARNING',
         2: 'INFO',
         3: 'DEBUG',
-    }.get(verbosity, 'DEBUG')
+    }.get(args.verbosity, 'DEBUG')
     logger.remove()
-    logger.add(sys.stdout, level=level, colorize=True)
+    if args.syslog_server:
+        try:
+            host, port = args.syslog_server.split(':', 2)
+            handler = logging.handlers.SysLogHandler(
+                address=(host, port),
+                socktype=socket.SOCK_STREAM
+            )
+            logger.add(handler)
+        except Exception as e:
+            pass
+    else:
+        logger.add(sys.stdout, level=level, colorize=True)
 
 
 def yara_scan(args):
@@ -172,6 +183,11 @@ def main():
         choices=['json', 'csv', 'plain'],
         default='plain',
         help='Specify the output format (JSON, CSV, or plain).'
+    )
+    common_args_parser.add_argument(
+        '--syslog-server',
+        required=False,
+        help='Specify the address and port of a remote syslog server (e.g. "127.0.0.1:13337"'
     )
 
     subparsers = parser.add_subparsers(dest='mode', required=True, help='mode of operation of scanner')
