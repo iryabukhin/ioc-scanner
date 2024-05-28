@@ -97,15 +97,13 @@ class IOCScanner:
         items_validation_result = self._validate_indicator_items(i)
         for item in items_validation_result.matched_items:
             result.add_valid_item(item)
+            result.match_data[item.id] = items_validation_result.item_context.get(item.id, {})
 
         for item in items_validation_result.skipped_items:
             result.add_skipped_item(item)
 
         for item in items_validation_result.error_items:
             result.add_error_item(item)
-
-        for item_id, data in items_validation_result.item_context.items():
-            result.match_data[item_id] = data
 
         for child in i.child_indicators:
             child_result = self._validate_indicator(child)

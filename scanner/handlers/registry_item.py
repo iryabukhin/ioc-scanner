@@ -69,7 +69,7 @@ class RegistryItemHandler(BaseHandler):
             'RegistryItem/NumSubKeys',
             'RegistryItem/NumValues',
             'RegistryItem/ReportedLengthInBytes',
-            'RegistryItem/Username',
+            # 'RegistryItem/Username',
             # 'RegistryItem/SecurityID', # cant fetch this info using winreg module
         ]
 
@@ -107,13 +107,15 @@ class RegistryItemHandler(BaseHandler):
         return registry_values
 
     def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
+        result = ValidationResult()
+        result.set_lazy_evaluation(self._lazy_evaluation)
         if not OSType.is_win():
-            return False
+            result.skip_remaining_items(items)
+            return result
 
         # We need to find the KeyPath item that will be used to fetch actual registry branch values
         key_path_item = next((i for i in items if i.term.endswith('KeyPath')), None)
-
-        if key_path_item:
+        if key_path_item is not None:
             key_path = key_path_item.content.content
             hive, *key_path_parts = key_path.split(self.PATH_DELIMITER)
 
@@ -122,47 +124,45 @@ class RegistryItemHandler(BaseHandler):
 
             if hive not in self.HIVES:
                 logger.error(f'Unsupported hive name in KeyPath item: "{hive}". Item GUID: "{key_path_item.id}"')
-                return False
+                return result
 
             key_path = self.PATH_DELIMITER.join(key_path_parts)
             if (hive, key_path) not in self._registry_cache:
                 self._populate_key_info(hive, key_path)
 
             key_values = self._registry_cache.get((hive, key_path), {})
-            valid_items = set()
             for value_name, value_data in sorted(key_values.items()):
                 for item in items:
                     value_to_check = value_data.get(item.term)
                     if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
-                        if operator == Operator.OR:
-                            return True
-                        else:
-                            valid_items.add(item)
-            return operator == Operator.AND and len(valid_items) == len(items)
+                        result.add_matched_item(item)
+                        if operator == Operator.OR and self._lazy_evaluation:
+                            result.skip_remaining_items(items)
+                            return result
         else:
             # Perform a full scan if no KeyPath item is provided
             logger.info("No KeyPath item provided, engaging full registry scan...")
 
             specified_hives = [i.content.content for i in items if i.term == 'Hive']
             specified_hives = [self.HIVE_ABBREVIATIONS.get(hive, hive) for hive in specified_hives]
-            hives_to_scan = {name: key for name, key in self.HIVES.items() if
-                             name in specified_hives or not specified_hives}
-
-            valid_items = set()
+            hives_to_scan = {
+                name: key for name, key in self.HIVES.items()
+                if name in specified_hives or not specified_hives
+            }
 
             for hive_name, hive_key in hives_to_scan.items():
                 for value in self._enumerate_path_values(hive_key):
                     for item in items:
-                        if item in valid_items:
+                        if result.is_item_valid(item):
                             continue
                         value_to_check = value.get(item.term)
                         if value_to_check is not None and ConditionValidator.validate_condition(item, value_to_check):
-                            if operator == operator.OR:
-                                return True
-                            else:
-                                valid_items.add(item)
+                            result.add_matched_item(item)
+                            if operator == Operator.OR and self._lazy_evaluation:
+                                result.skip_remaining_items(items)
+                                return result
 
-            return operator == operator.AND and len(valid_items) == len(items)
+        return result
 
 
     def _enumerate_path_values(self, hive_key: int, path: str = ''):

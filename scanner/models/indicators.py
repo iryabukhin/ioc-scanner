@@ -112,6 +112,9 @@ class ValidationResult:
         self.error_items.extend(items if isinstance(items, list) else [items])
         self.error_logs.append(error_message)
 
+    def is_item_valid(self, item: IndicatorItem) -> bool:
+        return item in self.matched_items
+
     def add_item_artifact_info(self, item: IndicatorItem, artifact_info: dict):
         self.artifact_info[item.id] = artifact_info
 
