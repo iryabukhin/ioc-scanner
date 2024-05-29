@@ -49,15 +49,19 @@ class ProcessItemHandler(BaseHandler):
         ]
 
     def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
-        valid_items = set()
+        result = ValidationResult()
         for pid, process_data in self._get_process_info().items():
             for item in items:
                 value = process_data.get(item.term)
                 if value is not None and ConditionValidator.validate_condition(item, value):
-                    valid_items.add(item)
+                    result.add_matched_item(item, context={'process': process_data})
                     if operator == Operator.OR and self._lazy_evaluation:
-                        return True
-        return bool(valid_items) if operator == Operator.OR else len(valid_items) == len(items)
+                        result.skip_remaining_items(items)
+                        break
+            else:
+                continue
+            break
+        return result
 
     def _get_process_info(self) -> dict[str, dict]:
         if not self._process_info:

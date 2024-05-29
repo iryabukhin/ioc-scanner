@@ -7,28 +7,28 @@
     </metadata>
     <criteria>
         <Indicator id="top-level-indicator" operator="AND">
-            <IndicatorItem id="file-path-item" condition="is" preserve-case="false" negate="false">
-                <Context document="FileItem" search="FileItem/FullPath" type="mir" />
-                <Content type="string">%USERPROFILE%\trid.exe</Content>
-            </IndicatorItem>
+<!--            <IndicatorItem id="file-path-item" condition="is" preserve-case="false" negate="false">-->
+<!--                <Context document="FileItem" search="FileItem/FullPath" type="mir" />-->
+<!--                <Content type="string">%USERPROFILE%\trid.exe</Content>-->
+<!--            </IndicatorItem>-->
             <Indicator id="service-item-indicator" operator="AND">
                 <IndicatorItem id="service-item-1" condition="contains" preserve-case="false" negate="false">
                     <Context document="ServiceItem" search="ServiceItem/name" type="mir" />
-                    <Content type="string">wghttp</Content>
+                    <Content type="string">winmgt</Content>
                 </IndicatorItem>
             </Indicator>
-            <Indicator id="unsupported-item-indicator" operator="AND">
-                <IndicatorItem id="unsupported-item-1" condition="contains" preserve-case="false" negate="false">
-                    <Context document="SomeTotallyNonExistentItem"
-                             search="SomeTotallyNonExistentItem/NothingInParticular" type="mir" />
-                    <Content type="string">test</Content>
-                </IndicatorItem>
-                <IndicatorItem id="unsupported-item-2" condition="matches" preserve-case="false" negate="true">
-                    <Context document="SomeTotallyNonExistentItem"
-                             search="SomeTotallyNonExistentItem/NothingInParticular" type="mir"/>
-                    <Content type="int">1</Content>
-                </IndicatorItem>
-            </Indicator>
+<!--            <Indicator id="unsupported-item-indicator" operator="AND">-->
+<!--                <IndicatorItem id="unsupported-item-1" condition="contains" preserve-case="false" negate="false">-->
+<!--                    <Context document="SomeTotallyNonExistentItem"-->
+<!--                             search="SomeTotallyNonExistentItem/NothingInParticular" type="mir" />-->
+<!--                    <Content type="string">test</Content>-->
+<!--                </IndicatorItem>-->
+<!--                <IndicatorItem id="unsupported-item-2" condition="matches" preserve-case="false" negate="true">-->
+<!--                    <Context document="SomeTotallyNonExistentItem"-->
+<!--                             search="SomeTotallyNonExistentItem/NothingInParticular" type="mir"/>-->
+<!--                    <Content type="int">1</Content>-->
+<!--                </IndicatorItem>-->
+<!--            </Indicator>-->
         </Indicator>
 <!--            <IndicatorItem id="file-hash" condition="is" preserve-case="false" negate="false">-->
 <!--                <Context document="FileItem" search="FileItem/Sha1sum" type="mir" />-->

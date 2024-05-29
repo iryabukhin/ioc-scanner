@@ -2,7 +2,6 @@ import hashlib
 import os
 import psutil
 import json
-from typing import Optional, Union
 
 from scanner.config import ConfigObject
 from scanner.core import BaseHandler
@@ -18,10 +17,14 @@ from loguru import logger
 
 from scanner.utils.hash import calculate_hash
 
-
+try:
+    import win32service
+    import win32api
+    import win32con
+except ImportError:
+    pass
 
 class ServiceItemHandler(BaseHandler):
-
     SIGNATURE_STATUS_VALID = 0
     SIGNATURE_STATUS_NOT_SIGNED = 2
     SIGNATURE_STATUS_NOT_TRUSTED = 4
@@ -29,7 +32,6 @@ class ServiceItemHandler(BaseHandler):
 
     AUTHENTICODE_SIGNATURE_CMD = 'Get-AuthenticodeSignature'
 
-    # taken from System.Management.Automation.SignatureStatus
     SIGNATURE_STATUS_VALUE_MAP = {
         SIGNATURE_STATUS_VALID: True,  # Valid
         SIGNATURE_STATUS_NOT_SIGNED: False,  # UnknownError
@@ -75,54 +77,8 @@ class ServiceItemHandler(BaseHandler):
             'ServiceItem/type'
         ]
 
-    def _populate_cache(self) -> None:
-        for service in psutil.win_service_iter():
-            try:
-                info = {
-                    'name': service.name(),
-                    'descriptiveName': service.display_name(),
-                    'description': service.description(),
-                    'path': service.binpath().split(' ')[0] if service.binpath() else None,
-                    'pid': service.pid(),
-                    'arguments': self._get_service_args(service),
-                    'status': service.status(),
-                    'mode': service.start_type(),
-                    'startedAs': service.username(),
-                    'serviceDLL': list(),
-                    'serviceDLLmd5sum': list(),
-                    'serviceDLLsha1sum': list(),
-                    'serviceDLLsha256sum': list(),
-                }
-
-                if info['path'] and self._scan_executable_signature:
-                    info.update(self._get_service_executable_hash(info['path']))
-
-                # no need to fetch this info for services that are stared with their own executable file
-                if self._scan_dlls and self._is_service_shared(info['path']) and service.pid():
-                    for dll_info in self._get_dll_info(service):
-                        for k, v in dll_info.items():
-                            if k not in info:
-                                info[k] = list()
-                            info[k].append(v)
-
-                self._service_cache[service.name()] = info
-            except (OSError, PermissionError, psutil.AccessDenied) as e:
-                logger.error(f'An error prevented fetching info about {service.name()} process: {str(e)}')
-                continue
-
-    def _get_service_args(self, service) -> str | None:
-        binpath = service.binpath()
-        if not binpath:
-            return None
-        parts = binpath.split(' ')
-        if len(parts) < 2:
-            return None
-        return ' '.join(parts[1:])
-
     def validate(self, items: list[IndicatorItem], operator: Operator) -> ValidationResult:
         result = ValidationResult()
-        # TODO: Figure out what we should do with Windows-only OpenIoC terms
-
         self._update_scan_flags(items)
 
         if not self._service_cache:
@@ -139,7 +95,108 @@ class ServiceItemHandler(BaseHandler):
 
         return result
 
-    def _get_exec_dll_modules(self, pid: int) -> list[dict[str, str]]:
+    def _populate_cache(self) -> None:
+        try:
+            scm = win32service.OpenSCManager(None, None, win32service.SC_MANAGER_ENUMERATE_SERVICE)
+        except Exception as e:
+            logger.error(f'Error opening Service Control Manager: {str(e)}')
+            return
+
+        try:
+            services = win32service.EnumServicesStatus(scm, win32service.SERVICE_WIN32, win32service.SERVICE_STATE_ALL)
+            for service_name, display_name, status in services:
+                try:
+                    service_handle = win32service.OpenService(scm, service_name, win32con.GENERIC_READ)
+                    service_info = win32service.QueryServiceConfig(service_handle)
+                    service_status = win32service.QueryServiceStatus(service_handle)
+
+                    info = {
+                        'name': service_name,
+                        'descriptiveName': display_name,
+                        'description': service_info[1],
+                        'path': service_info[3].split(' ')[0],
+                        'pid': service_status[5],
+                        'arguments': self._get_service_args(service_info[3]),
+                        'status': self._get_service_status(service_status[1]),
+                        'mode': self._get_service_start_type(service_info[0]),
+                        'startedAs': '',
+                        'serviceDLL': list(),
+                        'serviceDLLmd5sum': list(),
+                        'serviceDLLsha1sum': list(),
+                        'serviceDLLsha256sum': list(),
+                    }
+
+                    if info['path'] and self._scan_executable_signature:
+                        info.update(self._get_service_executable_hash(info['path']))
+
+                    if self._scan_dlls and self._is_service_shared(info['path']) and info['pid']:
+                        for dll_info in self._get_dll_info(info['pid']):
+                            for k, v in dll_info.items():
+                                if k not in info:
+                                    info[k] = list()
+                                info[k].append(v)
+
+                    self._service_cache[service_name] = info
+                except Exception as e:
+                    logger.error(f'An error occurred while processing service {service_name}: {str(e)}')
+                    continue
+        except Exception as e:
+            logger.error(f'Error enumerating services: {str(e)}')
+        finally:
+            win32service.CloseServiceHandle(scm)
+
+    def _get_service_args(self, binpath: str) -> str | None:
+        parts = binpath.split(' ')
+        if len(parts) < 2:
+            return None
+        return ' '.join(parts[1:])
+
+    def _get_service_status(self, status_code: int) -> str:
+        return {
+            win32service.SERVICE_STOPPED: 'Stopped',
+            win32service.SERVICE_START_PENDING: 'Start Pending',
+            win32service.SERVICE_STOP_PENDING: 'Stop Pending',
+            win32service.SERVICE_RUNNING: 'Running',
+            win32service.SERVICE_CONTINUE_PENDING: 'Continue Pending',
+            win32service.SERVICE_PAUSE_PENDING: 'Pause Pending',
+            win32service.SERVICE_PAUSED: 'Paused'
+        }.get(status_code, 'Unknown')
+
+    def _get_service_start_type(self, start_type: int) -> str:
+        return {
+            win32service.SERVICE_AUTO_START: 'Auto',
+            win32service.SERVICE_BOOT_START: 'Boot',
+            win32service.SERVICE_DEMAND_START: 'Demand',
+            win32service.SERVICE_DISABLED: 'Disabled',
+            win32service.SERVICE_SYSTEM_START: 'System'
+        }.get(start_type, 'Unknown')
+
+    def _is_service_shared(self, srvc_binpath: str) -> bool:
+        system_root = os.getenv('SystemRoot')
+        svchost_path = os.path.join(system_root, 'system32', 'svchost.exe')
+        return srvc_binpath.lower().startswith(svchost_path.lower())
+
+    def _get_service_executable_hash(self, binary_path: str) -> dict[str, str]:
+        result = {
+            'pathmd5sum': '',
+            'pathsha1sum': '',
+            'pathsha256sum': ''
+        }
+
+        if not os.path.exists(binary_path):
+            return result
+
+        try:
+            result['pathmd5sum'] = calculate_hash(binary_path, hashlib.md5)
+            result['pathsha1sum'] = calculate_hash(binary_path, hashlib.sha1)
+            result['pathsha256sum'] = calculate_hash(binary_path, hashlib.sha256)
+        except Exception as e:
+            logger.warning(f'Failed to calculate hash of service binary {binary_path}: {str(e)}')
+        finally:
+            return result
+
+
+    def _get_dll_info(self, pid: int) -> list[dict[str, str]]:
         logger.info(f'[BEGIN] Fetching loaded DLL info for {pid=}')
 
         result = list()
@@ -156,37 +213,35 @@ class ServiceItemHandler(BaseHandler):
                 False,
                 pid
             )
-        except Exception as e:
-            logger.warning(f'Error during a call to OpenProcess for {pid=}: {str(e)}')
-            return result
-
-        try:
             modlist = win32process.EnumProcessModules(proc_handle)
         except Exception as e:
             logger.warning(f'Error during a call to EnumProcessModules for {pid=}: {str(e)}')
             return result
 
-        for mod in modlist:
-            try:
+        try:
+            for mod in modlist:
                 modname = win32process.GetModuleFileNameEx(proc_handle, mod)
-            except Exception as e:
-                logger.warning(f'Error during a call to GetModuleFileNameEx for module {mod}: {str(e)}')
-                continue
+                if modname.endswith('.dll') and os.path.exists(modname):
+                    dll_data = {
+                        'serviceDLL': modname,
+                        'serviceDLLmd5sum': calculate_hash(modname, hashlib.md5),
+                        'serviceDLLsha1sum': calculate_hash(modname, hashlib.sha1),
+                        'serviceDLLsha256sum': calculate_hash(modname, hashlib.sha256),
+                    }
 
-            if modname.endswith('.dll') and os.path.exists(modname):
-                dll_data = {
-                   'serviceDLL': modname,
-                   'serviceDLLmd5sum': calculate_hash(modname, hashlib.md5),
-                   'serviceDLLsha1sum': calculate_hash(modname, hashlib.sha1),
-                   'serviceDLLsha256sum': calculate_hash(modname, hashlib.sha256),
-                }
+                    dll_data.update(self._get_dll_signature_info(modname))
 
-                dll_data.update(self._get_dll_signature_info(modname))
+                    result.append(dll_data)
+        except Exception as e:
+            logger.warning(f'Error during a call to GetModuleFileNameEx for module: {str(e)}')
 
-                result.append(dll_data)
+        finally:
+            win32api.CloseHandle(proc_handle)
+
 
         logger.info(f'[END] Fetching loaded DLL info for {pid=}')
         return result
+
 
     def _get_dll_signature_info(self, dll_path: str) -> dict:
         logger.info(f'[BEGIN] Fetching DLL signature info for file {dll_path}')
@@ -218,59 +273,14 @@ class ServiceItemHandler(BaseHandler):
         return result
 
 
-    def _get_dll_info(self, service) -> list[dict[str, str]]:
-        proc = psutil.Process(pid=service.pid())
-        try:
-            return self._get_exec_dll_modules(int(proc.pid))
-        except PermissionError as e:
-            logger.error(
-                f'Permission error occurred while retrieving DLL info for process {proc.name()} (pid {str(proc.pid)}): {str(e)}'
-            )
-        except psutil.NoSuchProcess as e:
-            logger.error(
-                f'Process {proc.name()} (pid {str(proc.pid)}) does not exist: {str(e)}'
-            )
-        except Exception as e:
-            logger.error(
-                f'Unknown error occurred while retrieving DLL info for process {proc.name()} (pid {str(proc.pid)}): {str(e)}'
-            )
-        finally:
-            return []
-
-    def _is_service_shared(self, srvc_binpath: str) -> bool:
-        system_root = os.getenv('SystemRoot')
-        svchost_path = os.path.join(system_root,'system32', 'svchost.exe')
-        # we need to call lower() because system32 dir name is sometimes uppercased
-        return srvc_binpath.lower().startswith(svchost_path.lower())
-
-    def _get_service_executable_hash(self, binary_path: str) -> dict[str, str]:
-        result = {
-            'pathmd5sum': '',
-            'pathsha1sum': '',
-            'pathsha256sum': ''
-        }
-
-        if not os.path.exists(binary_path):
-            return result
-
-        try:
-            result['pathmd5sum'] = calculate_hash(binary_path, hashlib.md5)
-            result['pathsha1sum'] = calculate_hash(binary_path, hashlib.sha1)
-            result['pathsha256sum'] = calculate_hash(binary_path, hashlib.sha256)
-        except Exception as e:
-            logger.warning(f'Failed to calculate hash of service binary {binary_path}: {str(e)}')
-        finally:
-            return result
-
     def _get_service_info(self) -> dict[str, dict]:
         if not self._service_cache:
             self._populate_cache()
         return self._service_cache
 
+
     def _update_scan_flags(self, items: list[IndicatorItem]) -> None:
         self._scan_executable_signature = any(i for i in items if 'sum' in i.term.lower())
         self._scan_dlls = any(i for i in items if 'dll' in i.term.lower())
-
-
 def init(config: ConfigObject):
     return ServiceItemHandler(config)
