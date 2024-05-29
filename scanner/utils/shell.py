@@ -25,14 +25,17 @@ def get_cmd_output(cmd: str, raise_exceptions: bool = False, **kwargs) -> str:
         ]))
         if raise_exceptions:
             raise e
-        return ''
+        else:
+            return ''
     except subprocess.TimeoutExpired as e:
         logger.warning(f'Shell command timed out: {str(e)}')
         if raise_exceptions:
             raise e
-        return ''
+        else:
+            return ''
     except Exception as e:
         logger.warning(f'Unknown error occurred while executing shell command: {str(e)}')
         if raise_exceptions:
             raise e
-        return ''
+        else:
+            return ''

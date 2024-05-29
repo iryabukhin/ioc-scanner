@@ -13,7 +13,7 @@ def calculate_hash(file_path: str, hash_method: Callable) -> str:
     return hash_obj.hexdigest()
 
 
-def get_file_digest(full_path: str, *hash_names: str) -> dict[str, str]:
+def get_file_digest(full_path: str, *hash_names) -> dict[str, str]:
     hash_methods = {name: getattr(hashlib, name)() for name in hash_names if hasattr(hashlib, name)}
     with open(full_path, 'rb') as f:
         for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
