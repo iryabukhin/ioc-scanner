@@ -132,12 +132,12 @@ def iocscan(args):
     try:
         config = load_configuration(args.config)
     except ValueError as e:
-        logger.error(f'Error loading configuration: {e}')
-        return
+        print(f'Unable to load scanner configuration: {e}')
+        sys.exit(1)
 
     if not os.path.exists(args.ioc):
-        logger.error('The specified IOC file or directory does not exist.')
-        return
+        print('The specified IOC file or directory does not exist!')
+        sys.exit(1)
     try:
         with open(args.ioc, 'r') as ioc_file:
             content = ioc_file.read()
@@ -161,8 +161,9 @@ def iocscan(args):
     elif args.format == 'plain':
         print(f'General result: {scan_result.result}')
         print(f'Scan duration: {str(scan_result.scan_duration)}')
-        print(f'Found matches: ')
-        print_indicator_matches(scan_result.matches, indent=1)
+        if len(scan_result.matches) > 0:
+            print('Found matches: ')
+            print_indicator_matches(scan_result.matches, indent=1)
 
 
 def main():
@@ -227,7 +228,6 @@ def main():
             yara_scan(args)
         case _:
             print(f'Unsupported mode: {args.mode}!')
-            print(f'')
             sys.exit(1)
 
 

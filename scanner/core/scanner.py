@@ -65,6 +65,9 @@ class IOCScanner:
         matches = []
         for indicator in indicators:
             validation_result = self._validate_indicator(indicator)
+            if not validation_result.valid:
+                continue
+
             valid_ids.append(indicator.id)
             matches.append({
                 'id': indicator.id,
